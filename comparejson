@@ -1,0 +1,636 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JSON接口返回结果对比工具</title>
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Segoe UI', Roboto, system-ui, -apple-system, sans-serif;
+            background: #f0f2f5;
+            margin: 0;
+            padding: 20px;
+            color: #1e293b;
+        }
+        .container {
+            max-width: 1600px;
+            margin: 0 auto;
+        }
+        h1 {
+            font-size: 1.8rem;
+            margin-bottom: 0.5rem;
+            color: #0f3b5c;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+        h1 small {
+            font-size: 0.8rem;
+            font-weight: normal;
+            background: #e2e8f0;
+            padding: 4px 12px;
+            border-radius: 30px;
+            color: #2c3e66;
+        }
+        .sub {
+            color: #475569;
+            margin-bottom: 24px;
+            border-left: 4px solid #3b82f6;
+            padding-left: 16px;
+            background: #f8fafc;
+            border-radius: 0 12px 12px 0;
+            line-height: 1.4;
+        }
+        .url-input-group {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 24px;
+            margin-bottom: 24px;
+        }
+        .json-card {
+            flex: 1;
+            min-width: 400px;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+            overflow: hidden;
+        }
+        .card-header {
+            background: #f8fafc;
+            padding: 12px 20px;
+            border-bottom: 1px solid #e2e8f0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+        .name-area {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+        .name-input {
+            border: 1px solid #cbd5e1;
+            border-radius: 20px;
+            padding: 6px 12px;
+            font-size: 0.85rem;
+            font-weight: 500;
+            width: 140px;
+        }
+        .badge {
+            background: #e2e8f0;
+            border-radius: 40px;
+            padding: 2px 10px;
+            font-size: 0.7rem;
+        }
+        .json-textarea {
+            width: 100%;
+            height: 380px;
+            padding: 16px;
+            font-family: 'Courier New', 'Monaco', monospace;
+            font-size: 0.75rem;
+            border: none;
+            resize: vertical;
+            background: #fefcf5;
+            line-height: 1.5;
+        }
+        .json-textarea:focus {
+            outline: none;
+            background: #fffef7;
+        }
+        .action-bar {
+            display: flex;
+            justify-content: center;
+            gap: 16px;
+            margin: 20px 0 28px;
+            flex-wrap: wrap;
+        }
+        button {
+            background: white;
+            border: 1px solid #cbd5e1;
+            padding: 10px 22px;
+            border-radius: 40px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: 0.2s;
+            font-size: 0.9rem;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+        button.primary {
+            background: #1e4a76;
+            border-color: #1e4a76;
+            color: white;
+        }
+        button.primary:hover {
+            background: #0f3b5c;
+            transform: translateY(-1px);
+        }
+        button:hover {
+            background: #f1f5f9;
+            transform: translateY(-1px);
+        }
+        .result-panel {
+            background: white;
+            border-radius: 24px;
+            box-shadow: 0 8px 20px rgba(0,0,0,0.08);
+            overflow: hidden;
+            margin-top: 12px;
+        }
+        .result-header {
+            background: #f1f5f9;
+            padding: 14px 24px;
+            font-weight: 700;
+            font-size: 1rem;
+            border-bottom: 1px solid #e2e8f0;
+            display: flex;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+        .stats {
+            font-size: 0.75rem;
+            background: #e6f0ff;
+            padding: 4px 12px;
+            border-radius: 30px;
+        }
+        .diff-stats {
+            font-size: 0.8rem;
+            color: #475569;
+        }
+        .diff-viewer {
+            display: flex;
+            flex-direction: column;
+        }
+        .diff-toolbar {
+            padding: 12px 20px;
+            background: #faf9fe;
+            border-bottom: 1px solid #e2e8f0;
+            display: flex;
+            gap: 16px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+        .toggle-btns {
+            display: flex;
+            gap: 8px;
+        }
+        .toggle-btn {
+            padding: 4px 12px;
+            font-size: 0.75rem;
+            background: #f1f5f9;
+            border: 1px solid #cbd5e1;
+            border-radius: 20px;
+            cursor: pointer;
+        }
+        .toggle-btn.active {
+            background: #1e4a76;
+            color: white;
+            border-color: #1e4a76;
+        }
+        .diff-content {
+            padding: 0;
+            max-height: 600px;
+            overflow: auto;
+            font-family: 'Courier New', monospace;
+            font-size: 0.8rem;
+        }
+        .diff-line {
+            display: flex;
+            border-bottom: 1px solid #f1f5f9;
+            font-family: monospace;
+        }
+        .diff-line-left, .diff-line-right {
+            flex: 1;
+            padding: 8px 16px;
+            white-space: pre-wrap;
+            word-break: break-word;
+            background: #fff;
+        }
+        .diff-line-left {
+            border-right: 1px solid #e2e8f0;
+            background-color: #fef9e6;
+        }
+        .diff-line-right {
+            background-color: #fef9e6;
+        }
+        .diff-added {
+            background-color: #d4edda !important;
+        }
+        .diff-removed {
+            background-color: #f8d7da !important;
+            text-decoration: line-through;
+            color: #721c24;
+        }
+        .diff-changed {
+            background-color: #fff3cd !important;
+        }
+        .json-tree-view {
+            padding: 16px;
+            font-family: monospace;
+            font-size: 0.75rem;
+            max-height: 550px;
+            overflow: auto;
+        }
+        .tree-node {
+            margin-left: 20px;
+        }
+        .tree-key {
+            color: #2563eb;
+            font-weight: 600;
+        }
+        .tree-value {
+            color: #2d3e50;
+        }
+        .diff-highlight-node {
+            background-color: #fff3cd;
+            border-radius: 4px;
+            padding: 2px 4px;
+        }
+        .footer-note {
+            margin-top: 24px;
+            text-align: center;
+            font-size: 0.7rem;
+            color: #6c757d;
+        }
+        .error-msg {
+            color: #dc2626;
+            padding: 12px;
+            background: #fee2e2;
+            border-radius: 12px;
+            margin: 12px;
+        }
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #6c757d;
+        }
+        .url-fetch-area {
+            display: flex;
+            gap: 8px;
+            margin-top: 8px;
+        }
+        .small-btn {
+            padding: 4px 12px;
+            font-size: 0.7rem;
+            background: #f1f5f9;
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <h1>
+        🔍 JSON接口返回结果对比工具
+        <small>深度对比 · 字段级差异高亮</small>
+    </h1>
+    <div class="sub">
+        支持粘贴两个JSON响应（或通过URL获取），自动对比字段差异、数组元素、嵌套结构，高亮显示不同之处。
+    </div>
+
+    <div class="url-input-group">
+        <div class="json-card">
+            <div class="card-header">
+                <div class="name-area">
+                    <span style="font-weight:600;">📄 JSON A</span>
+                    <input type="text" id="jsonAName" class="name-input" placeholder="名称（如：线上环境）" value="接口响应 A">
+                </div>
+                <span class="badge" id="jsonAStats">未解析</span>
+            </div>
+            <textarea id="jsonA" class="json-textarea" placeholder='粘贴第一个JSON响应...&#10;例如：{"code":0,"data":{"name":"test"}}'></textarea>
+            <div style="padding: 8px 16px 12px; display: flex; gap: 8px;">
+                <input type="text" id="urlA" placeholder="或输入接口URL自动获取" style="flex:1; padding:6px 12px; border:1px solid #ccc; border-radius:20px; font-size:0.75rem;">
+                <button id="fetchUrlA" class="small-btn">📡 获取</button>
+            </div>
+        </div>
+        <div class="json-card">
+            <div class="card-header">
+                <div class="name-area">
+                    <span style="font-weight:600;">📄 JSON B</span>
+                    <input type="text" id="jsonBName" class="name-input" placeholder="名称（如：测试环境）" value="接口响应 B">
+                </div>
+                <span class="badge" id="jsonBStats">未解析</span>
+            </div>
+            <textarea id="jsonB" class="json-textarea" placeholder='粘贴第二个JSON响应...'></textarea>
+            <div style="padding: 8px 16px 12px; display: flex; gap: 8px;">
+                <input type="text" id="urlB" placeholder="或输入接口URL自动获取" style="flex:1; padding:6px 12px; border:1px solid #ccc; border-radius:20px; font-size:0.75rem;">
+                <button id="fetchUrlB" class="small-btn">📡 获取</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="action-bar">
+        <button id="loadExampleBtn" class="primary">📋 加载示例JSON（你提供的接口数据）</button>
+        <button id="compareBtn">🔄 深度对比JSON</button>
+        <button id="clearBtn">🗑️ 清空</button>
+        <button id="copyDiffBtn">📋 复制差异报告</button>
+    </div>
+
+    <div class="result-panel" id="resultPanel" style="display: none;">
+        <div class="result-header">
+            <span>📊 对比结果 <span id="customNamesHeader"></span></span>
+            <span class="stats" id="diffStats"></span>
+        </div>
+        <div class="diff-toolbar">
+            <span style="font-size:0.75rem;">视图模式：</span>
+            <div class="toggle-btns">
+                <button class="toggle-btn active" data-mode="tree">🌲 树形对比</button>
+                <button class="toggle-btn" data-mode="side">🔄 左右对比（文本）</button>
+                <button class="toggle-btn" data-mode="json">📄 原始JSON并排</button>
+            </div>
+            <span class="diff-stats" id="detailStats"></span>
+        </div>
+        <div id="diffContent" class="diff-content"></div>
+    </div>
+    <div class="footer-note">
+        * 深度对比支持嵌套对象、数组元素差异检测；数组会按索引位置对比，新增/删除会标记。<br>
+        ** 树形视图高亮显示差异字段，左右视图展示结构化差异。
+    </div>
+</div>
+
+<script>
+    // 深度对比两个对象，返回差异路径列表
+    function deepDiff(obj1, obj2, path = '') {
+        const diffs = [];
+        const allKeys = new Set([...Object.keys(obj1 || {}), ...Object.keys(obj2 || {})]);
+        
+        for (let key of allKeys) {
+            const newPath = path ? `${path}.${key}` : key;
+            const val1 = obj1?.[key];
+            const val2 = obj2?.[key];
+            
+            if (val1 === val2) continue;
+            
+            if (val1 && val2 && typeof val1 === 'object' && typeof val2 === 'object' && !Array.isArray(val1) && !Array.isArray(val2)) {
+                const nestedDiffs = deepDiff(val1, val2, newPath);
+                diffs.push(...nestedDiffs);
+            } else if (Array.isArray(val1) && Array.isArray(val2)) {
+                // 数组对比：按索引对比
+                const maxLen = Math.max(val1.length, val2.length);
+                let hasArrayDiff = false;
+                for (let i = 0; i < maxLen; i++) {
+                    const item1 = i < val1.length ? val1[i] : undefined;
+                    const item2 = i < val2.length ? val2[i] : undefined;
+                    if (JSON.stringify(item1) !== JSON.stringify(item2)) {
+                        hasArrayDiff = true;
+                        diffs.push({
+                            path: `${newPath}[${i}]`,
+                            type: i >= val1.length ? 'added' : (i >= val2.length ? 'removed' : 'changed'),
+                            val1: item1,
+                            val2: item2
+                        });
+                    }
+                }
+                if (!hasArrayDiff && val1.length !== val2.length) {
+                    diffs.push({ path: newPath, type: 'length_changed', val1: val1.length, val2: val2.length });
+                }
+            } else {
+                diffs.push({
+                    path: newPath,
+                    type: 'changed',
+                    val1: val1,
+                    val2: val2
+                });
+            }
+        }
+        
+        // 处理仅存在于obj1的键
+        if (obj1 && obj2) {
+            for (let key of Object.keys(obj1)) {
+                if (!obj2.hasOwnProperty(key) && !allKeys.has(key)) {
+                    diffs.push({ path: path ? `${path}.${key}` : key, type: 'removed', val1: obj1[key], val2: undefined });
+                }
+            }
+            for (let key of Object.keys(obj2)) {
+                if (!obj1.hasOwnProperty(key) && !allKeys.has(key)) {
+                    diffs.push({ path: path ? `${path}.${key}` : key, type: 'added', val1: undefined, val2: obj2[key] });
+                }
+            }
+        }
+        
+        return diffs;
+    }
+    
+    // 构建树形视图（带高亮）
+    function buildTreeView(obj, diffs, path = '') {
+        if (!obj || typeof obj !== 'object') return `<span class="tree-value">${escapeHtml(String(obj))}</span>`;
+        
+        const isArray = Array.isArray(obj);
+        let html = isArray ? '[' : '{';
+        const entries = isArray ? obj.entries() : Object.entries(obj);
+        const items = [];
+        
+        for (let [k, v] of entries) {
+            const key = isArray ? k : k;
+            const currentPath = path ? `${path}.${key}` : String(key);
+            const hasDiff = diffs.some(d => d.path === currentPath);
+            const diffClass = hasDiff ? 'diff-highlight-node' : '';
+            
+            let valueHtml = '';
+            if (v && typeof v === 'object') {
+                valueHtml = buildTreeView(v, diffs, currentPath);
+            } else {
+                valueHtml = `<span class="tree-value">${escapeHtml(String(v))}</span>`;
+            }
+            
+            items.push(`
+                <div class="tree-node">
+                    <span class="tree-key ${diffClass}">${escapeHtml(isArray ? '' : key)}${isArray ? '' : ':'}</span>
+                    ${valueHtml}
+                </div>
+            `);
+        }
+        
+        html += items.join('');
+        html += isArray ? ']' : '}';
+        return html;
+    }
+    
+    function escapeHtml(str) {
+        if (str === undefined || str === null) return '';
+        return String(str).replace(/[&<>]/g, function(m) {
+            if (m === '&') return '&amp;';
+            if (m === '<') return '&lt;';
+            if (m === '>') return '&gt;';
+            return m;
+        });
+    }
+    
+    let currentDiffs = [];
+    let currentJson1 = null, currentJson2 = null;
+    let name1 = '', name2 = '';
+    
+    function performCompare() {
+        const jsonAStr = document.getElementById('jsonA').value.trim();
+        const jsonBStr = document.getElementById('jsonB').value.trim();
+        
+        if (!jsonAStr || !jsonBStr) {
+            alert('请填写两个JSON');
+            return;
+        }
+        
+        try {
+            currentJson1 = JSON.parse(jsonAStr);
+            currentJson2 = JSON.parse(jsonBStr);
+            name1 = document.getElementById('jsonAName').value.trim() || 'JSON A';
+            name2 = document.getElementById('jsonBName').value.trim() || 'JSON B';
+            
+            currentDiffs = deepDiff(currentJson1, currentJson2);
+            
+            const diffCount = currentDiffs.length;
+            document.getElementById('diffStats').innerHTML = `差异字段数: ${diffCount}`;
+            document.getElementById('detailStats').innerHTML = `🔍 共检测到 ${diffCount} 处差异`;
+            document.getElementById('customNamesHeader').innerHTML = `（${name1} vs ${name2}）`;
+            document.getElementById('jsonAStats').innerHTML = `${name1} 解析成功`;
+            document.getElementById('jsonBStats').innerHTML = `${name2} 解析成功`;
+            
+            renderByMode();
+            document.getElementById('resultPanel').style.display = 'block';
+        } catch (e) {
+            alert('JSON解析失败：' + e.message);
+        }
+    }
+    
+    function renderByMode() {
+        const activeMode = document.querySelector('.toggle-btn.active')?.dataset.mode || 'tree';
+        if (activeMode === 'tree') renderTreeMode();
+        else if (activeMode === 'side') renderSideBySide();
+        else renderRawJson();
+    }
+    
+    function renderTreeMode() {
+        const html1 = buildTreeView(currentJson1, currentDiffs);
+        const html2 = buildTreeView(currentJson2, currentDiffs);
+        const container = document.getElementById('diffContent');
+        container.innerHTML = `
+            <div style="display:flex; gap:20px; padding:16px;">
+                <div style="flex:1; border-right:1px solid #e2e8f0;">
+                    <div style="font-weight:bold; margin-bottom:12px;">📌 ${escapeHtml(name1)}</div>
+                    <div style="font-family:monospace; font-size:0.75rem;">${html1}</div>
+                </div>
+                <div style="flex:1;">
+                    <div style="font-weight:bold; margin-bottom:12px;">📌 ${escapeHtml(name2)}</div>
+                    <div style="font-family:monospace; font-size:0.75rem;">${html2}</div>
+                </div>
+            </div>
+            <div style="padding:12px 20px; background:#f9fafb; border-top:1px solid #e2e8f0;">
+                <strong>📝 差异路径列表：</strong><br/>
+                ${currentDiffs.map(d => `• ${d.path} : ${d.type === 'changed' ? `值不同 (${JSON.stringify(d.val1)} → ${JSON.stringify(d.val2)})` : d.type === 'added' ? `新增字段，值为 ${JSON.stringify(d.val2)}` : `缺失字段，原值 ${JSON.stringify(d.val1)}`}`).join('<br/>') || '✅ 无差异'}
+            </div>
+        `;
+    }
+    
+    function renderSideBySide() {
+        // 简化的左右文本对比（展示差异行）
+        const str1 = JSON.stringify(currentJson1, null, 2);
+        const str2 = JSON.stringify(currentJson2, null, 2);
+        const lines1 = str1.split('\n');
+        const lines2 = str2.split('\n');
+        const maxLen = Math.max(lines1.length, lines2.length);
+        let rows = '';
+        for (let i = 0; i < maxLen; i++) {
+            const line1 = i < lines1.length ? lines1[i] : '';
+            const line2 = i < lines2.length ? lines2[i] : '';
+            const isDiff = line1 !== line2;
+            rows += `<div class="diff-line">
+                        <div class="diff-line-left ${isDiff ? 'diff-changed' : ''}">${escapeHtml(line1)}</div>
+                        <div class="diff-line-right ${isDiff ? 'diff-changed' : ''}">${escapeHtml(line2)}</div>
+                     </div>`;
+        }
+        document.getElementById('diffContent').innerHTML = `<div style="display:flex; font-weight:bold; background:#eef2ff; padding:8px 16px;"><div style="flex:1">${escapeHtml(name1)}</div><div style="flex:1">${escapeHtml(name2)}</div></div>${rows}`;
+    }
+    
+    function renderRawJson() {
+        const str1 = JSON.stringify(currentJson1, null, 2);
+        const str2 = JSON.stringify(currentJson2, null, 2);
+        document.getElementById('diffContent').innerHTML = `
+            <div style="display:flex; gap:20px; padding:16px;">
+                <pre style="flex:1; background:#f8fafc; padding:12px; overflow:auto; margin:0; font-size:0.7rem;">${escapeHtml(str1)}</pre>
+                <pre style="flex:1; background:#f8fafc; padding:12px; overflow:auto; margin:0; font-size:0.7rem;">${escapeHtml(str2)}</pre>
+            </div>
+        `;
+    }
+    
+    function loadExample() {
+        const exampleJson = {
+            "cdntime": "0",
+            "codistime": "0",
+            "codisver": "0",
+            "costtime": "19",
+            "message": "",
+            "result": {
+                "abinfo": [{"testbucket": "C","testid": 103045,"testvalue": ""},{"testbucket": "A","testid": 102634,"testvalue": "1"}],
+                "aisort": false,
+                "leftops": {"id": "20260313004","scheme": "autohome://carfriend/aichatdeepseek?source=42"},
+                "rightops": {"id": "20260206001","testid": 103629}
+            },
+            "returncode": 0
+        };
+        const exampleJson2 = {
+            "cdntime": "0",
+            "codistime": "1",
+            "codisver": "0",
+            "costtime": "35",
+            "message": "",
+            "result": {
+                "abinfo": [{"testbucket": "C","testid": 103045,"testvalue": "new"},{"testbucket": "B","testid": 103479,"testvalue": "B"}],
+                "aisort": true,
+                "leftops": {"id": "20260313005","scheme": "autohome://carfriend/aichatdeepseek?source=43"},
+                "rightops": {"id": "20260206002","testid": 103630,"ext": "new"}
+            },
+            "returncode": 0
+        };
+        document.getElementById('jsonA').value = JSON.stringify(exampleJson, null, 2);
+        document.getElementById('jsonB').value = JSON.stringify(exampleJson2, null, 2);
+        document.getElementById('jsonAName').value = '原版接口';
+        document.getElementById('jsonBName').value = '新版接口';
+        performCompare();
+    }
+    
+    async function fetchJson(url, targetArea) {
+        if (!url) return;
+        try {
+            const response = await fetch(url);
+            const json = await response.json();
+            document.getElementById(targetArea).value = JSON.stringify(json, null, 2);
+            alert('获取成功，请点击对比');
+        } catch (e) {
+            alert('获取失败：' + e.message);
+        }
+    }
+    
+    // 事件绑定
+    document.getElementById('loadExampleBtn').addEventListener('click', loadExample);
+    document.getElementById('compareBtn').addEventListener('click', performCompare);
+    document.getElementById('clearBtn').addEventListener('click', () => {
+        document.getElementById('jsonA').value = '';
+        document.getElementById('jsonB').value = '';
+        document.getElementById('resultPanel').style.display = 'none';
+        document.getElementById('jsonAStats').innerHTML = '未解析';
+        document.getElementById('jsonBStats').innerHTML = '未解析';
+    });
+    document.getElementById('copyDiffBtn').addEventListener('click', () => {
+        if (!currentDiffs) return;
+        const report = currentDiffs.map(d => `${d.path}: ${d.type}`).join('\n');
+        navigator.clipboard.writeText(report);
+        alert('差异报告已复制');
+    });
+    document.getElementById('fetchUrlA').addEventListener('click', () => fetchJson(document.getElementById('urlA').value, 'jsonA'));
+    document.getElementById('fetchUrlB').addEventListener('click', () => fetchJson(document.getElementById('urlB').value, 'jsonB'));
+    
+    document.querySelectorAll('.toggle-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            document.querySelectorAll('.toggle-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            if (currentJson1 && currentJson2) renderByMode();
+        });
+    });
+</script>
+</body>
+</html>

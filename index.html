@@ -1,0 +1,543 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>双URL入参对比工具 - 支持自定义名称</title>
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Segoe UI', Roboto, system-ui, sans-serif;
+            background: #f1f5f9;
+            margin: 0;
+            padding: 24px 20px;
+            color: #0f172a;
+        }
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        h1 {
+            font-size: 1.8rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, #1e3a5f, #2c5282);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .sub {
+            color: #334155;
+            margin-bottom: 28px;
+            border-left: 4px solid #3b82f6;
+            padding-left: 16px;
+            background: #f8fafc;
+            border-radius: 0 12px 12px 0;
+            line-height: 1.3;
+        }
+        .url-input-group {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 24px;
+            margin-bottom: 32px;
+        }
+        .url-card {
+            flex: 1;
+            min-width: 320px;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+            overflow: hidden;
+            transition: 0.2s;
+        }
+        .url-card-header {
+            background: #f8fafc;
+            padding: 14px 20px;
+            border-bottom: 1px solid #e2e8f0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+        .name-input-area {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex: 2;
+            min-width: 150px;
+        }
+        .name-input-area label {
+            font-weight: 600;
+            color: #475569;
+            font-size: 0.8rem;
+        }
+        .url-name-input {
+            border: 1px solid #cbd5e1;
+            border-radius: 20px;
+            padding: 6px 12px;
+            font-size: 0.85rem;
+            font-weight: 500;
+            background: white;
+            width: 140px;
+            font-family: inherit;
+            transition: 0.2s;
+        }
+        .url-name-input:focus {
+            outline: none;
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 2px rgba(59,130,246,0.2);
+        }
+        .color-badge {
+            width: 28px;
+            height: 28px;
+            border-radius: 28px;
+            display: inline-block;
+        }
+        .badge {
+            background: #e2e8f0;
+            border-radius: 40px;
+            padding: 2px 10px;
+            font-size: 0.7rem;
+            font-weight: normal;
+        }
+        .param-stats {
+            font-size: 0.7rem;
+            color: #4b5563;
+            background: #f1f5f9;
+            padding: 2px 8px;
+            border-radius: 20px;
+        }
+        .url-textarea {
+            width: 100%;
+            padding: 16px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.75rem;
+            border: none;
+            resize: vertical;
+            background: #fefcf5;
+            border-bottom: 1px solid #e2e8f0;
+            line-height: 1.4;
+        }
+        .url-textarea:focus {
+            outline: none;
+            background: #fffef7;
+        }
+        .action-bar {
+            display: flex;
+            justify-content: center;
+            gap: 16px;
+            margin: 20px 0 30px;
+            flex-wrap: wrap;
+        }
+        button {
+            background: white;
+            border: 1px solid #cbd5e1;
+            padding: 8px 18px;
+            border-radius: 40px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: 0.2s;
+            font-size: 0.85rem;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+        }
+        button.primary {
+            background: #1e4a76;
+            border-color: #1e4a76;
+            color: white;
+        }
+        button.primary:hover {
+            background: #0f3b5c;
+            transform: translateY(-1px);
+        }
+        button:hover {
+            background: #f1f5f9;
+            transform: translateY(-1px);
+        }
+        .result-panel {
+            background: white;
+            border-radius: 24px;
+            box-shadow: 0 8px 20px rgba(0,0,0,0.08);
+            overflow: hidden;
+            margin-top: 12px;
+        }
+        .result-header {
+            background: #f1f5f9;
+            padding: 14px 24px;
+            font-weight: 700;
+            font-size: 1.1rem;
+            border-bottom: 1px solid #e2e8f0;
+            display: flex;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+        .stats {
+            font-size: 0.75rem;
+            background: #e6f0ff;
+            padding: 4px 12px;
+            border-radius: 30px;
+        }
+        .table-wrapper {
+            overflow-x: auto;
+            padding: 0 8px 8px 8px;
+        }
+        .param-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.85rem;
+        }
+        .param-table th {
+            text-align: left;
+            padding: 14px 12px 10px 16px;
+            background: #ffffff;
+            font-weight: 600;
+            color: #1e293b;
+            border-bottom: 2px solid #e2e8f0;
+        }
+        .param-table td {
+            padding: 10px 12px 10px 16px;
+            border-bottom: 1px solid #edf2f7;
+            vertical-align: top;
+            word-break: break-word;
+        }
+        .key-col {
+            font-family: monospace;
+            font-weight: 600;
+            color: #2563eb;
+            width: 26%;
+            background-color: #fafcff;
+        }
+        .value-col {
+            font-family: 'Courier New', monospace;
+            color: #2c3e50;
+            background-color: #fefefe;
+        }
+        .diff-highlight {
+            background-color: #fff8e7;
+        }
+        .diff-highlight .value-col {
+            background-color: #fffbeb;
+            border-left: 3px solid #f59e0b;
+        }
+        .unique-badge {
+            display: inline-block;
+            background: #f1f5f9;
+            font-size: 0.7rem;
+            padding: 2px 8px;
+            border-radius: 20px;
+            margin-left: 8px;
+            color: #475569;
+        }
+        .footer-note {
+            margin-top: 24px;
+            text-align: center;
+            font-size: 0.7rem;
+            color: #5b6e8c;
+        }
+        .color-dot {
+            display: inline-block;
+            width: 10px;
+            height: 10px;
+            border-radius: 10px;
+            margin-right: 6px;
+        }
+        .name-display {
+            font-weight: 700;
+            font-size: 0.9rem;
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <h1>🔗 双URL入参对比工具 <span style="font-size: 0.9rem;">✨ 支持自定义名称</span></h1>
+    <div class="sub">为两个URL分别设置名称（如“线上环境”、“测试环境”），清晰对比查询参数差异，高亮不同值，识别独有参数。</div>
+
+    <div class="url-input-group">
+        <div class="url-card" id="card1">
+            <div class="url-card-header">
+                <div class="name-input-area">
+                    <span class="color-dot" style="background: #3b82f6;"></span>
+                    <label>🔵 URL 1 名称：</label>
+                    <input type="text" id="url1Name" class="url-name-input" placeholder="例如：生产环境" value="线上版本">
+                </div>
+                <span class="param-stats" id="url1Stats">未解析</span>
+            </div>
+            <textarea id="url1Input" class="url-textarea" rows="3" placeholder="粘贴第一个URL..."></textarea>
+        </div>
+        <div class="url-card" id="card2">
+            <div class="url-card-header">
+                <div class="name-input-area">
+                    <span class="color-dot" style="background: #10b981;"></span>
+                    <label>🟢 URL 2 名称：</label>
+                    <input type="text" id="url2Name" class="url-name-input" placeholder="例如：测试环境" value="测试版本">
+                </div>
+                <span class="param-stats" id="url2Stats">未解析</span>
+            </div>
+            <textarea id="url2Input" class="url-textarea" rows="3" placeholder="粘贴第二个URL..."></textarea>
+        </div>
+    </div>
+
+    <div class="action-bar">
+        <button id="loadExampleBtn" class="primary">📋 加载示例URL（奥迪A4L）</button>
+        <button id="compareBtn">🔄 开始对比参数</button>
+        <button id="clearBtn">🗑️ 清空并重置</button>
+    </div>
+
+    <div class="result-panel" id="resultPanel" style="display: none;">
+        <div class="result-header">
+            <span>📊 参数对比明细 <span id="customNamesHeader"></span></span>
+            <span class="stats" id="diffStats"></span>
+        </div>
+        <div class="table-wrapper">
+            <table class="param-table" id="compareTable">
+                <thead id="tableHeader">
+                    <tr>
+                        <th>参数名 (Key)</th>
+                        <th id="headerName1">URL1 值</th>
+                        <th id="headerName2">URL2 值</th>
+                        <th>差异状态</th>
+                    </tr>
+                </thead>
+                <tbody id="compareTbody"></tbody>
+            </table>
+        </div>
+        <div id="uniqueParamsInfo" style="padding: 12px 20px 20px 20px; font-size: 0.8rem; color: #475569; border-top: 1px solid #ecfdf5;"></div>
+    </div>
+    <div class="footer-note">
+        * 仅对比URL中 ? 之后的查询参数（Query String）。高亮行表示两值不同。<br>
+        ** 可自定义两个URL的名称（如“开发分支”、“主干分支”），对比表格表头会自动同步名称。
+    </div>
+</div>
+
+<script>
+    // 工具函数：解析URL得到参数对象
+    function parseUrlParams(url) {
+        try {
+            let urlToParse = url;
+            if (!urlToParse.startsWith('http://') && !urlToParse.startsWith('https://')) {
+                urlToParse = 'http://' + urlToParse;
+            }
+            const urlObj = new URL(urlToParse);
+            const params = {};
+            for (let [key, value] of urlObj.searchParams.entries()) {
+                params[key] = value;
+            }
+            return { params, base: urlObj.origin + urlObj.pathname, valid: true };
+        } catch (e) {
+            // 手动降级解析?后面的参数
+            try {
+                let queryPart = url.split('?')[1] || '';
+                let params = {};
+                if (queryPart) {
+                    let pairs = queryPart.split('&');
+                    for (let pair of pairs) {
+                        let [key, val] = pair.split('=');
+                        if (key) {
+                            let decodedKey = decodeURIComponent(key);
+                            let decodedVal = val ? decodeURIComponent(val) : '';
+                            params[decodedKey] = decodedVal;
+                        }
+                    }
+                }
+                return { params, base: url.split('?')[0], valid: true };
+            } catch (fallbackErr) {
+                return { params: {}, valid: false, error: "URL格式无效" };
+            }
+        }
+    }
+
+    // 获取所有参数的并集
+    function getAllParamKeys(params1, params2) {
+        const keysSet = new Set();
+        Object.keys(params1).forEach(k => keysSet.add(k));
+        Object.keys(params2).forEach(k => keysSet.add(k));
+        return Array.from(keysSet).sort();
+    }
+
+    // 获取当前自定义名称
+    function getCustomNames() {
+        let name1 = document.getElementById("url1Name").value.trim();
+        let name2 = document.getElementById("url2Name").value.trim();
+        if (name1 === "") name1 = "URL 1";
+        if (name2 === "") name2 = "URL 2";
+        return { name1, name2 };
+    }
+
+    // 更新表头名称
+    function updateTableHeaders() {
+        const { name1, name2 } = getCustomNames();
+        const header1 = document.getElementById("headerName1");
+        const header2 = document.getElementById("headerName2");
+        if (header1) header1.innerHTML = `${name1} 值`;
+        if (header2) header2.innerHTML = `${name2} 值`;
+        const customHeaderSpan = document.getElementById("customNamesHeader");
+        if (customHeaderSpan) {
+            customHeaderSpan.innerHTML = `（${name1}  vs  ${name2}）`;
+        }
+    }
+
+    // 渲染对比表格
+    function renderComparison(url1Str, url2Str) {
+        const parsed1 = parseUrlParams(url1Str);
+        const parsed2 = parseUrlParams(url2Str);
+        
+        if (!parsed1.valid && !parsed2.valid) {
+            alert("两个URL都无法解析，请检查格式");
+            return false;
+        }
+        if (!parsed1.valid) alert("URL1 解析失败，请检查格式");
+        if (!parsed2.valid) alert("URL2 解析失败，请检查格式");
+        
+        const params1 = parsed1.valid ? parsed1.params : {};
+        const params2 = parsed2.valid ? parsed2.params : {};
+        
+        const allKeys = getAllParamKeys(params1, params2);
+        const tbody = document.getElementById("compareTbody");
+        tbody.innerHTML = "";
+        
+        let diffCount = 0;
+        let unique1Count = 0, unique2Count = 0;
+        const uniqueParamsList = [];
+        
+        const { name1, name2 } = getCustomNames();
+        
+        for (let key of allKeys) {
+            const val1 = params1.hasOwnProperty(key) ? params1[key] : "— (无此参数)";
+            const val2 = params2.hasOwnProperty(key) ? params2[key] : "— (无此参数)";
+            const isDiff = (params1[key] !== params2[key]) && params1.hasOwnProperty(key) && params2.hasOwnProperty(key);
+            const onlyIn1 = params1.hasOwnProperty(key) && !params2.hasOwnProperty(key);
+            const onlyIn2 = !params1.hasOwnProperty(key) && params2.hasOwnProperty(key);
+            
+            if (onlyIn1) unique1Count++;
+            if (onlyIn2) unique2Count++;
+            if (isDiff) diffCount++;
+            if (onlyIn1 || onlyIn2) {
+                uniqueParamsList.push(`${key} (仅存在于 ${onlyIn1 ? name1 : name2})`);
+            }
+            
+            const row = tbody.insertRow();
+            if (isDiff) row.classList.add("diff-highlight");
+            
+            const cellKey = row.insertCell(0);
+            cellKey.className = "key-col";
+            cellKey.textContent = key;
+            
+            const cellVal1 = row.insertCell(1);
+            cellVal1.className = "value-col";
+            cellVal1.textContent = val1;
+            if (onlyIn1) cellVal1.style.fontWeight = "500";
+            
+            const cellVal2 = row.insertCell(2);
+            cellVal2.className = "value-col";
+            cellVal2.textContent = val2;
+            if (onlyIn2) cellVal2.style.fontWeight = "500";
+            
+            const cellStatus = row.insertCell(3);
+            cellStatus.style.fontSize = "0.75rem";
+            if (onlyIn1) cellStatus.innerHTML = `🔵 仅 ${name1}`;
+            else if (onlyIn2) cellStatus.innerHTML = `🟢 仅 ${name2}`;
+            else if (isDiff) cellStatus.innerHTML = "⚠️ 值不同";
+            else cellStatus.innerHTML = "✓ 一致";
+        }
+        
+        // 更新统计和独有参数信息
+        document.getElementById("diffStats").innerHTML = `差异参数: ${diffCount} 个 | 独有参数: ${name1}:${unique1Count}  ${name2}:${unique2Count}`;
+        const uniqueDiv = document.getElementById("uniqueParamsInfo");
+        if (uniqueParamsList.length > 0) {
+            uniqueDiv.innerHTML = `<strong>📌 独有参数明细：</strong> ${uniqueParamsList.join("； ")}`;
+        } else {
+            uniqueDiv.innerHTML = `<strong>✅ 无独有参数</strong>，两个URL的参数集合完全一致。`;
+        }
+        
+        // 更新卡片上的参数数量统计
+        document.getElementById("url1Stats").innerHTML = `${name1} 参数: ${Object.keys(params1).length}`;
+        document.getElementById("url2Stats").innerHTML = `${name2} 参数: ${Object.keys(params2).length}`;
+        
+        return true;
+    }
+    
+    // 示例URL
+    const EXAMPLE_URL1 = "http://dschat-test.mulan.autohome.com.cn/dschat/chat/stream?appid=deepseek_search&sessionid=5fd894b4-4e77-4e87-9429-13f9d71310f4&stream=true&model=gse&operation=0&query_type=0&source=48&_authtoken=55c4efce8ab74669ab2495471d8e74d3040bf129&cityid=110100&deviceid=6ac9e7a0_a2d5_4e89_8bef_c85ebf034921&log_uuid=24a12d9f-1385-4703-b0ab-cc6179271938&q=%E5%A5%A5%E8%BF%AAA4L%E3%80%82&reference_first=2&longitude=0.0&latitude=0.0&app_ver=11.84.3&return_thought_chain=0&pm=2&allowpersonal=1&loc=4";
+    
+    const EXAMPLE_URL2 = "http://dschat-test.mulan.autohome.com.cn/dschat/chat/stream?appid=deepseek_search&stream=true&model=gse&q=%E5%A5%A5%E8%BF%AAA4L&sessionid=826e2c00-d630-4172-a15f-26ce6c7509ff&log_uuid=57a93f33-517b-4540-b3ac-735d5326c1b3&query_type=0&operation=0&loc=4&cityid=110100&deviceid=a1710b47_459d_462b_b369_ef12f1b66ec3&source=36&reference_first=2&v=11.84.3&auth=10b589bb4a284848b04ec7c55ab8ed13040bf129&return_struct=0&pm=3&from=1&test=&select_car_tags=&return_thought_chain=0&perscont=1&longitude=116.31168389219292&latitude=39.98005906288099";
+    
+    function loadExample() {
+        document.getElementById("url1Input").value = EXAMPLE_URL1;
+        document.getElementById("url2Input").value = EXAMPLE_URL2;
+        // 可选：设置有意义的默认名称
+        document.getElementById("url1Name").value = "线上版本 (带_authtoken)";
+        document.getElementById("url2Name").value = "测试版本 (auth)";
+        performCompare();
+    }
+    
+    function performCompare() {
+        const url1 = document.getElementById("url1Input").value.trim();
+        const url2 = document.getElementById("url2Input").value.trim();
+        if (!url1 && !url2) {
+            alert("请至少输入一个URL");
+            return;
+        }
+        if (!url1 || !url2) {
+            alert("两个URL都需要填写才能对比");
+            return;
+        }
+        // 先更新表头名称再渲染
+        updateTableHeaders();
+        const success = renderComparison(url1, url2);
+        if (success) {
+            document.getElementById("resultPanel").style.display = "block";
+        } else {
+            document.getElementById("resultPanel").style.display = "none";
+        }
+    }
+    
+    function clearAll() {
+        document.getElementById("url1Input").value = "";
+        document.getElementById("url2Input").value = "";
+        document.getElementById("url1Name").value = "线上版本";
+        document.getElementById("url2Name").value = "测试版本";
+        document.getElementById("resultPanel").style.display = "none";
+        document.getElementById("url1Stats").innerHTML = "未解析";
+        document.getElementById("url2Stats").innerHTML = "未解析";
+        updateTableHeaders();
+    }
+    
+    // 绑定事件
+    document.getElementById("loadExampleBtn").addEventListener("click", loadExample);
+    document.getElementById("compareBtn").addEventListener("click", performCompare);
+    document.getElementById("clearBtn").addEventListener("click", clearAll);
+    
+    // 当名称输入框变化时，如果结果面板可见则刷新对比（可选体验优化）
+    function bindNameChangeRefresh() {
+        const name1Input = document.getElementById("url1Name");
+        const name2Input = document.getElementById("url2Name");
+        const refreshIfVisible = () => {
+            if (document.getElementById("resultPanel").style.display === "block") {
+                performCompare();
+            } else {
+                updateTableHeaders(); // 仅更新表头样式
+            }
+        };
+        name1Input.addEventListener("change", refreshIfVisible);
+        name2Input.addEventListener("change", refreshIfVisible);
+    }
+    
+    // 初始化表头名称
+    window.addEventListener("DOMContentLoaded", () => {
+        updateTableHeaders();
+        bindNameChangeRefresh();
+        // 自动加载示例，方便演示
+        loadExample();
+    });
+</script>
+</body>
+</html>

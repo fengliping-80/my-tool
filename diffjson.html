@@ -3,13 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>JSON接口返回结果对比工具</title>
+    <title>JSON接口返回结果对比工具 - 增强高亮版</title>
     <style>
         * {
             box-sizing: border-box;
         }
         body {
-            font-family: 'Segoe UI', Roboto, system-ui, -apple-system, sans-serif;
+            font-family: 'Segoe UI', Roboto, system-ui, sans-serif;
             background: #f0f2f5;
             margin: 0;
             padding: 20px;
@@ -197,50 +197,43 @@
         }
         .diff-content {
             padding: 0;
-            max-height: 600px;
+            max-height: 650px;
             overflow: auto;
             font-family: 'Courier New', monospace;
             font-size: 0.8rem;
         }
-        .diff-line {
+        
+        /* ========== 树形视图高亮样式 ========== */
+        .tree-container {
             display: flex;
-            border-bottom: 1px solid #f1f5f9;
-            font-family: monospace;
-        }
-        .diff-line-left, .diff-line-right {
-            flex: 1;
-            padding: 8px 16px;
-            white-space: pre-wrap;
-            word-break: break-word;
-            background: #fff;
-        }
-        .diff-line-left {
-            border-right: 1px solid #e2e8f0;
-            background-color: #fef9e6;
-        }
-        .diff-line-right {
-            background-color: #fef9e6;
-        }
-        .diff-added {
-            background-color: #d4edda !important;
-        }
-        .diff-removed {
-            background-color: #f8d7da !important;
-            text-decoration: line-through;
-            color: #721c24;
-        }
-        .diff-changed {
-            background-color: #fff3cd !important;
-        }
-        .json-tree-view {
+            gap: 20px;
             padding: 16px;
-            font-family: monospace;
-            font-size: 0.75rem;
-            max-height: 550px;
+        }
+        .tree-panel {
+            flex: 1;
+            border-radius: 12px;
             overflow: auto;
+            max-height: 550px;
+        }
+        .tree-panel-title {
+            font-weight: bold;
+            margin-bottom: 12px;
+            padding: 8px 12px;
+            background: #f1f5f9;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+        .tree-view {
+            font-family: 'Courier New', monospace;
+            font-size: 0.75rem;
+            line-height: 1.6;
         }
         .tree-node {
             margin-left: 20px;
+            position: relative;
         }
         .tree-key {
             color: #2563eb;
@@ -249,10 +242,163 @@
         .tree-value {
             color: #2d3e50;
         }
+        /* 高亮差异字段 - 明显背景色 + 边框 + 阴影 */
         .diff-highlight-node {
-            background-color: #fff3cd;
+            background: linear-gradient(135deg, #fff3cd 0%, #ffe6b3 100%);
+            border-left: 4px solid #f59e0b;
+            padding: 2px 6px;
+            border-radius: 6px;
+            display: inline-block;
+            font-weight: bold;
+            box-shadow: 0 1px 3px rgba(245, 158, 11, 0.3);
+            animation: pulseHighlight 1s ease;
+        }
+        /* 新增字段高亮（绿色） */
+        .diff-added-node {
+            background: linear-gradient(135deg, #d4edda 0%, #c3e6cb 100%);
+            border-left: 4px solid #28a745;
+            padding: 2px 6px;
+            border-radius: 6px;
+            display: inline-block;
+            font-weight: bold;
+            box-shadow: 0 1px 3px rgba(40, 167, 69, 0.3);
+        }
+        /* 删除字段高亮（红色） */
+        .diff-removed-node {
+            background: linear-gradient(135deg, #f8d7da 0%, #f5c6cb 100%);
+            border-left: 4px solid #dc3545;
+            padding: 2px 6px;
+            border-radius: 6px;
+            display: inline-block;
+            text-decoration: line-through;
+            font-weight: bold;
+        }
+        
+        @keyframes pulseHighlight {
+            0% { opacity: 0.6; transform: scale(1); }
+            50% { opacity: 1; transform: scale(1.02); }
+            100% { opacity: 1; transform: scale(1); }
+        }
+        
+        /* ========== 左右文本对比高亮样式 ========== */
+        .side-container {
+            display: flex;
+            flex-direction: column;
+        }
+        .side-header {
+            display: flex;
+            font-weight: bold;
+            background: #eef2ff;
+            padding: 10px 16px;
+            border-bottom: 2px solid #cbd5e1;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+        .side-header-left, .side-header-right {
+            flex: 1;
+            padding: 0 8px;
+        }
+        .diff-line {
+            display: flex;
+            border-bottom: 1px solid #f1f5f9;
+            font-family: monospace;
+            font-size: 0.7rem;
+        }
+        .diff-line-left, .diff-line-right {
+            flex: 1;
+            padding: 6px 12px;
+            white-space: pre-wrap;
+            word-break: break-word;
+            background: #fff;
+            transition: all 0.2s;
+        }
+        .diff-line-left {
+            border-right: 1px solid #e2e8f0;
+        }
+        /* 差异行 - 强烈高亮 */
+        .diff-line.diff-row .diff-line-left,
+        .diff-line.diff-row .diff-line-right {
+            background: #fff3cd !important;
+            border-left: 4px solid #f59e0b !important;
+            font-weight: 500;
+        }
+        /* 仅左侧有内容（删除） */
+        .diff-line.only-left .diff-line-left {
+            background: #f8d7da !important;
+            border-left: 4px solid #dc3545 !important;
+            text-decoration: line-through;
+        }
+        /* 仅右侧有内容（新增） */
+        .diff-line.only-right .diff-line-right {
+            background: #d4edda !important;
+            border-left: 4px solid #28a745 !important;
+            font-weight: 500;
+        }
+        /* 字符级差异高亮 */
+        .char-diff {
+            background-color: #ff6b6b;
+            color: white;
+            padding: 0 2px;
+            border-radius: 3px;
+            font-weight: bold;
+        }
+        
+        /* ========== 原始JSON并排高亮 ========== */
+        .raw-json-container {
+            display: flex;
+            gap: 20px;
+            padding: 16px;
+        }
+        .raw-json-panel {
+            flex: 1;
+            background: #1e293b;
+            border-radius: 12px;
+            overflow: auto;
+            max-height: 550px;
+        }
+        .raw-json-title {
+            background: #0f172a;
+            color: #94a3b8;
+            padding: 8px 16px;
+            font-weight: bold;
+            font-size: 0.75rem;
+            position: sticky;
+            top: 0;
+        }
+        .raw-json-content {
+            padding: 16px;
+            margin: 0;
+            color: #e2e8f0;
+            font-family: 'Courier New', monospace;
+            font-size: 0.7rem;
+            line-height: 1.5;
+            white-space: pre-wrap;
+        }
+        /* JSON行级高亮 */
+        .json-line-diff {
+            background-color: #f59e0b;
+            color: #1e293b;
+            display: inline-block;
+            width: 100%;
+            padding: 2px 0;
             border-radius: 4px;
-            padding: 2px 4px;
+            font-weight: bold;
+        }
+        
+        .diff-summary {
+            padding: 12px 20px;
+            background: #f9fafb;
+            border-top: 1px solid #e2e8f0;
+            font-size: 0.8rem;
+        }
+        .diff-path-item {
+            font-family: monospace;
+            padding: 4px 8px;
+            margin: 2px 0;
+            background: #fef9e6;
+            border-left: 3px solid #f59e0b;
+            border-radius: 4px;
         }
         .footer-note {
             margin-top: 24px;
@@ -267,20 +413,19 @@
             border-radius: 12px;
             margin: 12px;
         }
-        .loading {
-            text-align: center;
-            padding: 40px;
-            color: #6c757d;
-        }
         .url-fetch-area {
             display: flex;
             gap: 8px;
             margin-top: 8px;
+            padding: 0 16px 12px;
         }
         .small-btn {
             padding: 4px 12px;
             font-size: 0.7rem;
             background: #f1f5f9;
+            border: 1px solid #cbd5e1;
+            border-radius: 20px;
+            cursor: pointer;
         }
     </style>
 </head>
@@ -288,10 +433,10 @@
 <div class="container">
     <h1>
         🔍 JSON接口返回结果对比工具
-        <small>深度对比 · 字段级差异高亮</small>
+        <small>✨ 增强高亮 · 一目了然</small>
     </h1>
     <div class="sub">
-        支持粘贴两个JSON响应（或通过URL获取），自动对比字段差异、数组元素、嵌套结构，高亮显示不同之处。
+        支持粘贴两个JSON响应（或通过URL获取），深度对比字段差异，三种视图均有明显高亮标识。
     </div>
 
     <div class="url-input-group">
@@ -299,12 +444,12 @@
             <div class="card-header">
                 <div class="name-area">
                     <span style="font-weight:600;">📄 JSON A</span>
-                    <input type="text" id="jsonAName" class="name-input" placeholder="名称（如：线上环境）" value="接口响应 A">
+                    <input type="text" id="jsonAName" class="name-input" placeholder="名称" value="接口响应 A">
                 </div>
                 <span class="badge" id="jsonAStats">未解析</span>
             </div>
-            <textarea id="jsonA" class="json-textarea" placeholder='粘贴第一个JSON响应...&#10;例如：{"code":0,"data":{"name":"test"}}'></textarea>
-            <div style="padding: 8px 16px 12px; display: flex; gap: 8px;">
+            <textarea id="jsonA" class="json-textarea" placeholder='粘贴第一个JSON响应...'></textarea>
+            <div class="url-fetch-area">
                 <input type="text" id="urlA" placeholder="或输入接口URL自动获取" style="flex:1; padding:6px 12px; border:1px solid #ccc; border-radius:20px; font-size:0.75rem;">
                 <button id="fetchUrlA" class="small-btn">📡 获取</button>
             </div>
@@ -313,12 +458,12 @@
             <div class="card-header">
                 <div class="name-area">
                     <span style="font-weight:600;">📄 JSON B</span>
-                    <input type="text" id="jsonBName" class="name-input" placeholder="名称（如：测试环境）" value="接口响应 B">
+                    <input type="text" id="jsonBName" class="name-input" placeholder="名称" value="接口响应 B">
                 </div>
                 <span class="badge" id="jsonBStats">未解析</span>
             </div>
             <textarea id="jsonB" class="json-textarea" placeholder='粘贴第二个JSON响应...'></textarea>
-            <div style="padding: 8px 16px 12px; display: flex; gap: 8px;">
+            <div class="url-fetch-area">
                 <input type="text" id="urlB" placeholder="或输入接口URL自动获取" style="flex:1; padding:6px 12px; border:1px solid #ccc; border-radius:20px; font-size:0.75rem;">
                 <button id="fetchUrlB" class="small-btn">📡 获取</button>
             </div>
@@ -326,7 +471,7 @@
     </div>
 
     <div class="action-bar">
-        <button id="loadExampleBtn" class="primary">📋 加载示例JSON（你提供的接口数据）</button>
+        <button id="loadExampleBtn" class="primary">📋 加载示例JSON</button>
         <button id="compareBtn">🔄 深度对比JSON</button>
         <button id="clearBtn">🗑️ 清空</button>
         <button id="copyDiffBtn">📋 复制差异报告</button>
@@ -340,22 +485,23 @@
         <div class="diff-toolbar">
             <span style="font-size:0.75rem;">视图模式：</span>
             <div class="toggle-btns">
-                <button class="toggle-btn active" data-mode="tree">🌲 树形对比</button>
-                <button class="toggle-btn" data-mode="side">🔄 左右对比（文本）</button>
-                <button class="toggle-btn" data-mode="json">📄 原始JSON并排</button>
+                <button class="toggle-btn active" data-mode="tree">🌲 树形对比（高亮）</button>
+                <button class="toggle-btn" data-mode="side">🔄 左右文本（行级高亮）</button>
+                <button class="toggle-btn" data-mode="json">📄 原始JSON（行级高亮）</button>
             </div>
             <span class="diff-stats" id="detailStats"></span>
         </div>
         <div id="diffContent" class="diff-content"></div>
+        <div id="diffSummary" class="diff-summary"></div>
     </div>
     <div class="footer-note">
-        * 深度对比支持嵌套对象、数组元素差异检测；数组会按索引位置对比，新增/删除会标记。<br>
-        ** 树形视图高亮显示差异字段，左右视图展示结构化差异。
+        * 🟡 黄色高亮 = 值不同 &nbsp;&nbsp; 🟢 绿色高亮 = 新增字段 &nbsp;&nbsp; 🔴 红色高亮 = 缺失字段<br>
+        ** 支持嵌套对象、数组元素差异检测，差异字段会有明显的背景色和左侧边框标识。
     </div>
 </div>
 
 <script>
-    // 深度对比两个对象，返回差异路径列表
+    // 深度对比两个对象，返回差异路径列表（增强版）
     function deepDiff(obj1, obj2, path = '') {
         const diffs = [];
         const allKeys = new Set([...Object.keys(obj1 || {}), ...Object.keys(obj2 || {})]);
@@ -371,14 +517,11 @@
                 const nestedDiffs = deepDiff(val1, val2, newPath);
                 diffs.push(...nestedDiffs);
             } else if (Array.isArray(val1) && Array.isArray(val2)) {
-                // 数组对比：按索引对比
                 const maxLen = Math.max(val1.length, val2.length);
-                let hasArrayDiff = false;
                 for (let i = 0; i < maxLen; i++) {
                     const item1 = i < val1.length ? val1[i] : undefined;
                     const item2 = i < val2.length ? val2[i] : undefined;
                     if (JSON.stringify(item1) !== JSON.stringify(item2)) {
-                        hasArrayDiff = true;
                         diffs.push({
                             path: `${newPath}[${i}]`,
                             type: i >= val1.length ? 'added' : (i >= val2.length ? 'removed' : 'changed'),
@@ -387,50 +530,39 @@
                         });
                     }
                 }
-                if (!hasArrayDiff && val1.length !== val2.length) {
-                    diffs.push({ path: newPath, type: 'length_changed', val1: val1.length, val2: val2.length });
-                }
+            } else if (val1 === undefined && val2 !== undefined) {
+                diffs.push({ path: newPath, type: 'added', val1: undefined, val2: val2 });
+            } else if (val1 !== undefined && val2 === undefined) {
+                diffs.push({ path: newPath, type: 'removed', val1: val1, val2: undefined });
             } else {
-                diffs.push({
-                    path: newPath,
-                    type: 'changed',
-                    val1: val1,
-                    val2: val2
-                });
+                diffs.push({ path: newPath, type: 'changed', val1: val1, val2: val2 });
             }
         }
-        
-        // 处理仅存在于obj1的键
-        if (obj1 && obj2) {
-            for (let key of Object.keys(obj1)) {
-                if (!obj2.hasOwnProperty(key) && !allKeys.has(key)) {
-                    diffs.push({ path: path ? `${path}.${key}` : key, type: 'removed', val1: obj1[key], val2: undefined });
-                }
-            }
-            for (let key of Object.keys(obj2)) {
-                if (!obj1.hasOwnProperty(key) && !allKeys.has(key)) {
-                    diffs.push({ path: path ? `${path}.${key}` : key, type: 'added', val1: undefined, val2: obj2[key] });
-                }
-            }
-        }
-        
         return diffs;
     }
     
     // 构建树形视图（带高亮）
     function buildTreeView(obj, diffs, path = '') {
-        if (!obj || typeof obj !== 'object') return `<span class="tree-value">${escapeHtml(String(obj))}</span>`;
+        if (!obj || typeof obj !== 'object') {
+            return `<span class="tree-value">${escapeHtml(String(obj))}</span>`;
+        }
         
         const isArray = Array.isArray(obj);
-        let html = isArray ? '[' : '{';
+        let html = isArray ? '<span style="color:#666;">[</span>' : '<span style="color:#666;">{</span>';
         const entries = isArray ? obj.entries() : Object.entries(obj);
         const items = [];
         
         for (let [k, v] of entries) {
             const key = isArray ? k : k;
             const currentPath = path ? `${path}.${key}` : String(key);
-            const hasDiff = diffs.some(d => d.path === currentPath);
-            const diffClass = hasDiff ? 'diff-highlight-node' : '';
+            const diff = diffs.find(d => d.path === currentPath);
+            
+            let diffClass = '';
+            if (diff) {
+                if (diff.type === 'changed') diffClass = 'diff-highlight-node';
+                else if (diff.type === 'added') diffClass = 'diff-added-node';
+                else if (diff.type === 'removed') diffClass = 'diff-removed-node';
+            }
             
             let valueHtml = '';
             if (v && typeof v === 'object') {
@@ -442,13 +574,15 @@
             items.push(`
                 <div class="tree-node">
                     <span class="tree-key ${diffClass}">${escapeHtml(isArray ? '' : key)}${isArray ? '' : ':'}</span>
+                    ${!isArray ? ' ' : ''}
                     ${valueHtml}
+                    ${isArray ? '' : ','}
                 </div>
             `);
         }
         
         html += items.join('');
-        html += isArray ? ']' : '}';
+        html += isArray ? '<span style="color:#666;">]</span>' : '<span style="color:#666;">}</span>';
         return html;
     }
     
@@ -462,9 +596,82 @@
         });
     }
     
+    // 左右文本对比（行级高亮）
+    function renderSideBySide(json1, json2, name1, name2, diffs) {
+        const str1 = JSON.stringify(json1, null, 2);
+        const str2 = JSON.stringify(json2, null, 2);
+        const lines1 = str1.split('\n');
+        const lines2 = str2.split('\n');
+        const maxLen = Math.max(lines1.length, lines2.length);
+        
+        let rows = '';
+        for (let i = 0; i < maxLen; i++) {
+            const line1 = i < lines1.length ? lines1[i] : '';
+            const line2 = i < lines2.length ? lines2[i] : '';
+            const isDiff = line1 !== line2;
+            let rowClass = '';
+            if (isDiff) {
+                if (line1 && !line2) rowClass = 'only-left';
+                else if (!line1 && line2) rowClass = 'only-right';
+                else rowClass = 'diff-row';
+            }
+            rows += `<div class="diff-line ${rowClass}">
+                        <div class="diff-line-left">${escapeHtml(line1)}</div>
+                        <div class="diff-line-right">${escapeHtml(line2)}</div>
+                     </div>`;
+        }
+        
+        return `
+            <div class="side-container">
+                <div class="side-header">
+                    <div class="side-header-left">📌 ${escapeHtml(name1)}</div>
+                    <div class="side-header-right">📌 ${escapeHtml(name2)}</div>
+                </div>
+                ${rows}
+            </div>
+        `;
+    }
+    
+    // 原始JSON并排高亮
+    function renderRawJson(json1, json2, name1, name2, diffs) {
+        const str1 = JSON.stringify(json1, null, 2);
+        const str2 = JSON.stringify(json2, null, 2);
+        
+        // 简单的行级高亮：检查每行是否包含差异路径
+        const lines1 = str1.split('\n');
+        const lines2 = str2.split('\n');
+        
+        function highlightLines(lines, diffs, side) {
+            return lines.map(line => {
+                const hasDiff = diffs.some(d => {
+                    const pathPattern = d.path.replace(/\./g, '\\.').replace(/\[\d+\]/g, '\\[\\d+\\]');
+                    const regex = new RegExp(pathPattern);
+                    return regex.test(line);
+                });
+                if (hasDiff) {
+                    return `<span class="json-line-diff">${escapeHtml(line)}</span>`;
+                }
+                return escapeHtml(line);
+            }).join('\n');
+        }
+        
+        return `
+            <div class="raw-json-container">
+                <div class="raw-json-panel">
+                    <div class="raw-json-title">${escapeHtml(name1)}</div>
+                    <pre class="raw-json-content">${highlightLines(lines1, diffs, 'left')}</pre>
+                </div>
+                <div class="raw-json-panel">
+                    <div class="raw-json-title">${escapeHtml(name2)}</div>
+                    <pre class="raw-json-content">${highlightLines(lines2, diffs, 'right')}</pre>
+                </div>
+            </div>
+        `;
+    }
+    
     let currentDiffs = [];
     let currentJson1 = null, currentJson2 = null;
-    let name1 = '', name2 = '';
+    let currentName1 = '', currentName2 = '';
     
     function performCompare() {
         const jsonAStr = document.getElementById('jsonA').value.trim();
@@ -478,17 +685,28 @@
         try {
             currentJson1 = JSON.parse(jsonAStr);
             currentJson2 = JSON.parse(jsonBStr);
-            name1 = document.getElementById('jsonAName').value.trim() || 'JSON A';
-            name2 = document.getElementById('jsonBName').value.trim() || 'JSON B';
+            currentName1 = document.getElementById('jsonAName').value.trim() || 'JSON A';
+            currentName2 = document.getElementById('jsonBName').value.trim() || 'JSON B';
             
             currentDiffs = deepDiff(currentJson1, currentJson2);
             
             const diffCount = currentDiffs.length;
+            const addedCount = currentDiffs.filter(d => d.type === 'added').length;
+            const removedCount = currentDiffs.filter(d => d.type === 'removed').length;
+            const changedCount = currentDiffs.filter(d => d.type === 'changed').length;
+            
             document.getElementById('diffStats').innerHTML = `差异字段数: ${diffCount}`;
-            document.getElementById('detailStats').innerHTML = `🔍 共检测到 ${diffCount} 处差异`;
-            document.getElementById('customNamesHeader').innerHTML = `（${name1} vs ${name2}）`;
-            document.getElementById('jsonAStats').innerHTML = `${name1} 解析成功`;
-            document.getElementById('jsonBStats').innerHTML = `${name2} 解析成功`;
+            document.getElementById('detailStats').innerHTML = `🟡变更:${changedCount} 🟢新增:${addedCount} 🔴缺失:${removedCount}`;
+            document.getElementById('customNamesHeader').innerHTML = `（${currentName1} vs ${currentName2}）`;
+            document.getElementById('jsonAStats').innerHTML = `${currentName1} 解析成功 (${Object.keys(currentJson1).length}字段)`;
+            document.getElementById('jsonBStats').innerHTML = `${currentName2} 解析成功 (${Object.keys(currentJson2).length}字段)`;
+            
+            // 渲染差异摘要
+            const summaryHtml = `
+                <strong>📝 差异路径明细：</strong><br/>
+                ${currentDiffs.map(d => `<div class="diff-path-item">• ${d.path} : <span style="color:${d.type === 'changed' ? '#f59e0b' : (d.type === 'added' ? '#28a745' : '#dc3545')}">${d.type === 'changed' ? '值不同' : (d.type === 'added' ? '新增字段' : '缺失字段')}</span> ${d.type === 'changed' ? `(${JSON.stringify(d.val1)} → ${JSON.stringify(d.val2)})` : (d.type === 'added' ? `值为 ${JSON.stringify(d.val2)}` : `原值 ${JSON.stringify(d.val1)}`)}</div>`).join('') || '<div>✅ 两个JSON完全一致，无任何差异</div>'}
+            `;
+            document.getElementById('diffSummary').innerHTML = summaryHtml;
             
             renderByMode();
             document.getElementById('resultPanel').style.display = 'block';
@@ -499,69 +717,34 @@
     
     function renderByMode() {
         const activeMode = document.querySelector('.toggle-btn.active')?.dataset.mode || 'tree';
-        if (activeMode === 'tree') renderTreeMode();
-        else if (activeMode === 'side') renderSideBySide();
-        else renderRawJson();
-    }
-    
-    function renderTreeMode() {
-        const html1 = buildTreeView(currentJson1, currentDiffs);
-        const html2 = buildTreeView(currentJson2, currentDiffs);
         const container = document.getElementById('diffContent');
-        container.innerHTML = `
-            <div style="display:flex; gap:20px; padding:16px;">
-                <div style="flex:1; border-right:1px solid #e2e8f0;">
-                    <div style="font-weight:bold; margin-bottom:12px;">📌 ${escapeHtml(name1)}</div>
-                    <div style="font-family:monospace; font-size:0.75rem;">${html1}</div>
+        
+        if (activeMode === 'tree') {
+            const tree1 = buildTreeView(currentJson1, currentDiffs);
+            const tree2 = buildTreeView(currentJson2, currentDiffs);
+            container.innerHTML = `
+                <div class="tree-container">
+                    <div class="tree-panel">
+                        <div class="tree-panel-title">📌 ${escapeHtml(currentName1)}</div>
+                        <div class="tree-view">${tree1}</div>
+                    </div>
+                    <div class="tree-panel">
+                        <div class="tree-panel-title">📌 ${escapeHtml(currentName2)}</div>
+                        <div class="tree-view">${tree2}</div>
+                    </div>
                 </div>
-                <div style="flex:1;">
-                    <div style="font-weight:bold; margin-bottom:12px;">📌 ${escapeHtml(name2)}</div>
-                    <div style="font-family:monospace; font-size:0.75rem;">${html2}</div>
-                </div>
-            </div>
-            <div style="padding:12px 20px; background:#f9fafb; border-top:1px solid #e2e8f0;">
-                <strong>📝 差异路径列表：</strong><br/>
-                ${currentDiffs.map(d => `• ${d.path} : ${d.type === 'changed' ? `值不同 (${JSON.stringify(d.val1)} → ${JSON.stringify(d.val2)})` : d.type === 'added' ? `新增字段，值为 ${JSON.stringify(d.val2)}` : `缺失字段，原值 ${JSON.stringify(d.val1)}`}`).join('<br/>') || '✅ 无差异'}
-            </div>
-        `;
-    }
-    
-    function renderSideBySide() {
-        // 简化的左右文本对比（展示差异行）
-        const str1 = JSON.stringify(currentJson1, null, 2);
-        const str2 = JSON.stringify(currentJson2, null, 2);
-        const lines1 = str1.split('\n');
-        const lines2 = str2.split('\n');
-        const maxLen = Math.max(lines1.length, lines2.length);
-        let rows = '';
-        for (let i = 0; i < maxLen; i++) {
-            const line1 = i < lines1.length ? lines1[i] : '';
-            const line2 = i < lines2.length ? lines2[i] : '';
-            const isDiff = line1 !== line2;
-            rows += `<div class="diff-line">
-                        <div class="diff-line-left ${isDiff ? 'diff-changed' : ''}">${escapeHtml(line1)}</div>
-                        <div class="diff-line-right ${isDiff ? 'diff-changed' : ''}">${escapeHtml(line2)}</div>
-                     </div>`;
+            `;
+        } else if (activeMode === 'side') {
+            container.innerHTML = renderSideBySide(currentJson1, currentJson2, currentName1, currentName2, currentDiffs);
+        } else {
+            container.innerHTML = renderRawJson(currentJson1, currentJson2, currentName1, currentName2, currentDiffs);
         }
-        document.getElementById('diffContent').innerHTML = `<div style="display:flex; font-weight:bold; background:#eef2ff; padding:8px 16px;"><div style="flex:1">${escapeHtml(name1)}</div><div style="flex:1">${escapeHtml(name2)}</div></div>${rows}`;
-    }
-    
-    function renderRawJson() {
-        const str1 = JSON.stringify(currentJson1, null, 2);
-        const str2 = JSON.stringify(currentJson2, null, 2);
-        document.getElementById('diffContent').innerHTML = `
-            <div style="display:flex; gap:20px; padding:16px;">
-                <pre style="flex:1; background:#f8fafc; padding:12px; overflow:auto; margin:0; font-size:0.7rem;">${escapeHtml(str1)}</pre>
-                <pre style="flex:1; background:#f8fafc; padding:12px; overflow:auto; margin:0; font-size:0.7rem;">${escapeHtml(str2)}</pre>
-            </div>
-        `;
     }
     
     function loadExample() {
-        const exampleJson = {
+        const exampleJson1 = {
             "cdntime": "0",
             "codistime": "0",
-            "codisver": "0",
             "costtime": "19",
             "message": "",
             "result": {
@@ -575,7 +758,6 @@
         const exampleJson2 = {
             "cdntime": "0",
             "codistime": "1",
-            "codisver": "0",
             "costtime": "35",
             "message": "",
             "result": {
@@ -586,7 +768,7 @@
             },
             "returncode": 0
         };
-        document.getElementById('jsonA').value = JSON.stringify(exampleJson, null, 2);
+        document.getElementById('jsonA').value = JSON.stringify(exampleJson1, null, 2);
         document.getElementById('jsonB').value = JSON.stringify(exampleJson2, null, 2);
         document.getElementById('jsonAName').value = '原版接口';
         document.getElementById('jsonBName').value = '新版接口';
@@ -616,8 +798,8 @@
         document.getElementById('jsonBStats').innerHTML = '未解析';
     });
     document.getElementById('copyDiffBtn').addEventListener('click', () => {
-        if (!currentDiffs) return;
-        const report = currentDiffs.map(d => `${d.path}: ${d.type}`).join('\n');
+        if (!currentDiffs.length) return;
+        const report = currentDiffs.map(d => `${d.path}: ${d.type === 'changed' ? `值不同 (${JSON.stringify(d.val1)} → ${JSON.stringify(d.val2)})` : d.type}`).join('\n');
         navigator.clipboard.writeText(report);
         alert('差异报告已复制');
     });

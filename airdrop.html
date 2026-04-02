@@ -1,11 +1,11 @@
-我明白问题了！连接超时是因为 PeerJS 的免费 STUN/TURN 服务器在某些网络环境下（特别是公司网络）无法正常打洞。我来彻底解决这个问题，使用更可靠的公共 STUN 服务器，并添加多个备用服务器。
+你说得对，PeerJS 在某些网络环境下确实连接不稳定。我换一种更可靠的实现方式：**使用 WebRTC 原生 API + 手动信令交换**，这样你可以完全控制连接过程，并且通过复制粘贴信令信息来建立连接，不依赖任何第三方服务器。
 ```html
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=yes">
-    <title>文件快传 | 稳定P2P互传</title>
+    <title>文件快传 | 信令直连版</title>
     <style>
         * {
             margin: 0;
@@ -31,7 +31,6 @@
             border-radius: 32px;
             padding: 20px 24px;
             margin-bottom: 20px;
-            box-shadow: 0 8px 32px rgba(0,0,0,0.1);
             text-align: center;
         }
 
@@ -50,56 +49,8 @@
             margin-top: 8px;
         }
 
-        .room-card {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            border-radius: 28px;
-            padding: 24px;
-            margin-bottom: 20px;
-            color: white;
-            text-align: center;
-            box-shadow: 0 8px 20px rgba(0,0,0,0.15);
-        }
-
-        .room-label {
-            font-size: 0.9rem;
-            opacity: 0.9;
-            letter-spacing: 2px;
-        }
-
-        .room-number {
-            font-size: 3.5rem;
-            font-weight: bold;
-            font-family: 'Courier New', monospace;
-            letter-spacing: 8px;
-            background: rgba(255,255,255,0.2);
-            padding: 15px 20px;
-            border-radius: 60px;
-            margin: 15px 0;
-        }
-
-        .btn-group {
-            display: flex;
-            gap: 12px;
-            justify-content: center;
-            flex-wrap: wrap;
-        }
-
-        .btn-small {
-            background: rgba(255,255,255,0.25);
-            border: none;
-            color: white;
-            padding: 8px 20px;
-            border-radius: 40px;
-            font-size: 0.85rem;
-            cursor: pointer;
-            transition: 0.2s;
-        }
-
-        .btn-small:active {
-            transform: scale(0.96);
-        }
-
-        .connect-card {
+        /* 信令交换区域 - 核心 */
+        .signaling-card {
             background: white;
             border-radius: 28px;
             padding: 20px;
@@ -107,7 +58,7 @@
             box-shadow: 0 4px 12px rgba(0,0,0,0.08);
         }
 
-        .section-title {
+        .signaling-title {
             font-size: 1rem;
             font-weight: 600;
             color: #333;
@@ -115,56 +66,104 @@
             display: flex;
             align-items: center;
             gap: 8px;
+            padding-bottom: 8px;
+            border-bottom: 2px solid #667eea;
         }
 
-        .input-group {
+        .role-buttons {
             display: flex;
             gap: 12px;
-            margin-bottom: 16px;
-            flex-wrap: wrap;
+            margin-bottom: 20px;
         }
 
-        .input-group input {
+        .role-btn {
             flex: 1;
-            padding: 14px 18px;
+            padding: 12px;
             border: 2px solid #e0e0e0;
+            background: #f8f9fa;
             border-radius: 50px;
-            font-size: 1.2rem;
-            font-family: monospace;
-            text-align: center;
-            letter-spacing: 4px;
-            font-weight: bold;
-            outline: none;
-        }
-
-        .input-group input:focus {
-            border-color: #667eea;
-        }
-
-        .btn {
-            padding: 12px 24px;
-            border: none;
-            border-radius: 50px;
-            font-size: 0.95rem;
             font-weight: 600;
             cursor: pointer;
             transition: 0.2s;
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-            justify-content: center;
         }
 
-        .btn-primary {
+        .role-btn.active {
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: white;
+            border-color: transparent;
         }
 
-        .btn-primary:active {
-            transform: scale(0.97);
+        .sdp-box {
+            background: #1a1a2e;
+            border-radius: 20px;
+            padding: 12px;
+            margin-bottom: 16px;
         }
 
-        .btn-secondary {
+        .sdp-label {
+            color: #8bc34a;
+            font-size: 0.75rem;
+            margin-bottom: 8px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .sdp-content {
+            background: #0d0d1a;
+            color: #aaa;
+            font-family: monospace;
+            font-size: 0.65rem;
+            padding: 12px;
+            border-radius: 12px;
+            word-break: break-all;
+            max-height: 150px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+        }
+
+        .copy-sdp-btn {
+            background: #667eea;
+            border: none;
+            color: white;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.7rem;
+            cursor: pointer;
+        }
+
+        .input-sdp {
+            width: 100%;
+            height: 100px;
+            background: #0d0d1a;
+            color: #aaa;
+            font-family: monospace;
+            font-size: 0.65rem;
+            padding: 12px;
+            border-radius: 12px;
+            border: 1px solid #333;
+            resize: vertical;
+            margin-bottom: 12px;
+        }
+
+        .action-buttons {
+            display: flex;
+            gap: 12px;
+            margin-top: 12px;
+        }
+
+        .btn-signal {
+            flex: 1;
+            padding: 10px;
+            background: linear-gradient(135deg, #27ae60 0%, #2ecc71 100%);
+            color: white;
+            border: none;
+            border-radius: 50px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        .btn-signal.secondary {
             background: #f0f0f0;
             color: #333;
         }
@@ -359,17 +358,6 @@
             margin-top: 12px;
         }
 
-        .retry-btn {
-            background: #ffc107;
-            color: #333;
-            margin-left: 8px;
-            padding: 4px 12px;
-            border-radius: 20px;
-            font-size: 0.7rem;
-            border: none;
-            cursor: pointer;
-        }
-
         @media (max-width: 480px) {
             body {
                 padding: 12px;
@@ -377,9 +365,8 @@
             .header-card h1 {
                 font-size: 1.4rem;
             }
-            .room-number {
-                font-size: 2.5rem;
-                letter-spacing: 4px;
+            .sdp-content, .input-sdp {
+                font-size: 0.55rem;
             }
         }
     </style>
@@ -388,33 +375,51 @@
 <div class="app">
     <div class="header-card">
         <h1>📡 文件快传</h1>
-        <div class="sub">稳定P2P连接 | 一方连接 · 双方互传</div>
+        <div class="sub">信令直连版 | 复制粘贴建立连接 | 适用任何网络</div>
     </div>
 
-    <div class="room-card">
-        <div class="room-label">🏠 我的房间号</div>
-        <div class="room-number" id="roomNumber">----</div>
-        <div class="btn-group">
-            <button class="btn-small" id="copyRoomBtn">📋 复制房间号</button>
-            <button class="btn-small refresh-btn" id="refreshRoomBtn">🔄 更换房间号</button>
+    <!-- 信令交换区域 -->
+    <div class="signaling-card">
+        <div class="signaling-title">
+            📞 第一步：选择角色并交换信令
         </div>
-    </div>
+        <div class="role-buttons">
+            <button class="role-btn" id="roleOfferBtn">📱 发起方 (Offer)</button>
+            <button class="role-btn" id="roleAnswerBtn">💻 接收方 (Answer)</button>
+        </div>
 
-    <div class="connect-card">
-        <div class="section-title">🔗 输入对方房间号连接</div>
-        <div class="input-group">
-            <input type="text" id="targetRoomInput" placeholder="0000" maxlength="4" autocomplete="off" style="text-align:center; font-size:1.5rem;">
-            <button class="btn btn-primary" id="connectBtn">连接</button>
+        <!-- 我的信令 -->
+        <div class="sdp-box" id="mySdpBox" style="display: none;">
+            <div class="sdp-label">
+                <span>📤 复制以下信令发给对方</span>
+                <button class="copy-sdp-btn" id="copyMySdpBtn">复制</button>
+            </div>
+            <div class="sdp-content" id="mySdpContent">等待生成...</div>
         </div>
+
+        <!-- 对方的信令 -->
+        <div class="sdp-box">
+            <div class="sdp-label">
+                📥 粘贴对方的信令
+            </div>
+            <textarea class="input-sdp" id="remoteSdpInput" placeholder="粘贴对方复制的信令到这里..."></textarea>
+            <div class="action-buttons">
+                <button class="btn-signal" id="exchangeBtn">🔗 交换信令并连接</button>
+                <button class="btn-signal secondary" id="resetBtn">🔄 重置连接</button>
+            </div>
+        </div>
+
         <div class="status">
             <span class="led red" id="statusLed"></span>
             <span id="statusText">未连接</span>
-            <button class="btn btn-secondary" id="disconnectBtn" style="margin-left: auto; padding: 6px 16px;">断开</button>
         </div>
     </div>
 
+    <!-- 发送区域 -->
     <div class="transfer-card">
-        <div class="section-title">📤 发送文件</div>
+        <div class="signaling-title">
+            📤 第二步：发送文件
+        </div>
         <div class="file-dropzone" id="dropzone">
             📁 点击或拖拽文件到这里<br>
             <small style="color:#999;">支持图片、文档等任意格式</small>
@@ -424,35 +429,41 @@
         <button class="send-all-btn" id="sendBtn" disabled>🚀 发送到对方</button>
     </div>
 
+    <!-- 接收区域 -->
     <div class="transfer-card">
-        <div class="section-title">📥 接收的文件</div>
+        <div class="signaling-title">
+            📥 接收的文件
+        </div>
         <div class="received-area" id="receivedArea">
             <div style="color:#999; text-align:center; padding:20px;">暂无接收文件</div>
         </div>
     </div>
 
     <div class="log-area" id="logArea">
-        <div class="log-entry info">✨ 初始化完成，正在生成房间号...</div>
+        <div class="log-entry info">✨ 初始化完成</div>
+        <div class="log-entry info">📖 使用说明：一方点击"发起方"，另一方点击"接收方"，复制信令互相粘贴后点击"交换信令并连接"</div>
     </div>
 
     <div class="tip">
-        💡 使用说明：<br>
-        1️⃣ 电脑和手机都打开本页面，会自动生成4位房间号<br>
-        2️⃣ 在任意一方输入对方的4位房间号，点击"连接"<br>
-        3️⃣ 连接成功后，双方都可以选择文件并互传 🎉<br>
-        ⚠️ 如果连接超时，请点击"更换房间号"重试，或检查是否在同一网络
+        💡 连接步骤（解决超时问题）：<br>
+        1️⃣ 设备A点击【发起方】→ 复制生成的信令<br>
+        2️⃣ 设备B点击【接收方】→ 粘贴设备A的信令 → 点击"交换信令并连接"<br>
+        3️⃣ 设备B会生成自己的信令，复制后发给设备A<br>
+        4️⃣ 设备A粘贴设备B的信令 → 再次点击"交换信令并连接"<br>
+        5️⃣ 连接成功！双方即可互传文件 🎉
     </div>
 </div>
 
-<script src="https://unpkg.com/peerjs@1.4.7/dist/peerjs.min.js"></script>
 <script>
     // DOM 元素
-    const roomNumberSpan = document.getElementById('roomNumber');
-    const copyRoomBtn = document.getElementById('copyRoomBtn');
-    const refreshRoomBtn = document.getElementById('refreshRoomBtn');
-    const targetRoomInput = document.getElementById('targetRoomInput');
-    const connectBtn = document.getElementById('connectBtn');
-    const disconnectBtn = document.getElementById('disconnectBtn');
+    const roleOfferBtn = document.getElementById('roleOfferBtn');
+    const roleAnswerBtn = document.getElementById('roleAnswerBtn');
+    const mySdpBox = document.getElementById('mySdpBox');
+    const mySdpContent = document.getElementById('mySdpContent');
+    const copyMySdpBtn = document.getElementById('copyMySdpBtn');
+    const remoteSdpInput = document.getElementById('remoteSdpInput');
+    const exchangeBtn = document.getElementById('exchangeBtn');
+    const resetBtn = document.getElementById('resetBtn');
     const statusLed = document.getElementById('statusLed');
     const statusTextSpan = document.getElementById('statusText');
     const dropzone = document.getElementById('dropzone');
@@ -462,66 +473,33 @@
     const receivedArea = document.getElementById('receivedArea');
     const logArea = document.getElementById('logArea');
 
-    // 状态变量
-    let peer = null;
-    let currentConn = null;
-    let myRoomId = null;
+    // WebRTC 相关变量
+    let peerConnection = null;
+    let dataChannel = null;
     let isConnected = false;
     let pendingFiles = [];
-    let reconnectTimeout = null;
-    let connectionAttempt = null;
+    let currentRole = null; // 'offer' or 'answer'
+    let localSdp = null;
     
     // 接收文件缓冲
     let receivingMeta = null;
     let receivingBuffer = [];
 
-    // 多组 STUN/TURN 服务器配置 - 提高连接成功率
-    const peerConfig = {
-        config: {
-            iceServers: [
-                // Google 公共 STUN 服务器
-                { urls: 'stun:stun.l.google.com:19302' },
-                { urls: 'stun:stun1.l.google.com:19302' },
-                { urls: 'stun:stun2.l.google.com:19302' },
-                { urls: 'stun:stun3.l.google.com:19302' },
-                { urls: 'stun:stun4.l.google.com:19302' },
-                // 其他公共 STUN 服务器
-                { urls: 'stun:stun.ekiga.net' },
-                { urls: 'stun:stun.ideasip.com' },
-                { urls: 'stun:stun.iptel.org' },
-                { urls: 'stun:stun.rixtelecom.se' },
-                { urls: 'stun:stun.schlund.de' },
-                { urls: 'stun:stun.stunprotocol.org:3478' },
-                { urls: 'stun:stun.voiparound.com' },
-                { urls: 'stun:stun.voipbuster.com' },
-                { urls: 'stun:stun.voipstunt.com' },
-                { urls: 'stun:stun.voxgratia.org' },
-                // 公共 TURN 服务器（备选，某些网络需要）
-                {
-                    urls: 'turn:openrelay.metered.ca:80',
-                    username: 'openrelayproject',
-                    credential: 'openrelayproject'
-                },
-                {
-                    urls: 'turn:openrelay.metered.ca:443',
-                    username: 'openrelayproject',
-                    credential: 'openrelayproject'
-                },
-                {
-                    urls: 'turn:openrelay.metered.ca:443?transport=tcp',
-                    username: 'openrelayproject',
-                    credential: 'openrelayproject'
-                }
-            ],
-            iceCandidatePoolSize: 10,
-            iceTransportPolicy: 'all'
-        }
+    // STUN 服务器配置
+    const configuration = {
+        iceServers: [
+            { urls: 'stun:stun.l.google.com:19302' },
+            { urls: 'stun:stun1.l.google.com:19302' },
+            { urls: 'stun:stun2.l.google.com:19302' },
+            { urls: 'stun:stun3.l.google.com:19302' },
+            { urls: 'stun:stun4.l.google.com:19302' },
+            { urls: 'stun:stun.ekiga.net' },
+            { urls: 'stun:stun.ideasip.com' },
+            { urls: 'stun:stun.iptel.org' },
+            { urls: 'stun:stun.stunprotocol.org:3478' }
+        ],
+        iceCandidatePoolSize: 10
     };
-
-    // 生成随机4位数字
-    function generateRoomId() {
-        return Math.floor(1000 + Math.random() * 9000).toString();
-    }
 
     function addLog(msg, type = 'info') {
         const logDiv = document.createElement('div');
@@ -539,27 +517,23 @@
         }
     }
 
-    // 更新连接状态
     function updateConnectionStatus(connected, msg) {
         if(connected) {
             statusLed.className = 'led green';
             statusTextSpan.innerText = msg || '已连接';
             isConnected = true;
-            addLog(`连接成功！${msg || ''}`, 'success');
+            addLog(`连接成功！可以互传文件了`, 'success');
         } else {
             statusLed.className = 'led red';
             statusTextSpan.innerText = msg || '未连接';
             isConnected = false;
-            if(msg && msg.includes('超时')) {
-                addLog(msg, 'error');
-            }
         }
         updateSendButton();
     }
 
     function updateSendButton() {
         const hasFiles = pendingFiles.length > 0;
-        const canSend = isConnected && hasFiles;
+        const canSend = isConnected && hasFiles && dataChannel && dataChannel.readyState === 'open';
         sendBtn.disabled = !canSend;
     }
 
@@ -655,8 +629,8 @@
     }
 
     function sendFiles() {
-        if(!currentConn || !isConnected) {
-            addLog('未连接，无法发送', 'error');
+        if(!dataChannel || dataChannel.readyState !== 'open') {
+            addLog('数据通道未就绪，无法发送', 'error');
             return;
         }
         if(pendingFiles.length === 0) {
@@ -679,10 +653,10 @@
                     size: file.size
                 };
                 try {
-                    currentConn.send(JSON.stringify(metadata));
+                    dataChannel.send(JSON.stringify(metadata));
                     setTimeout(() => {
-                        if(currentConn && currentConn.open) {
-                            currentConn.send(arrayBuffer);
+                        if(dataChannel && dataChannel.readyState === 'open') {
+                            dataChannel.send(arrayBuffer);
                             addLog(`已发送: ${file.name}`, 'success');
                         } else {
                             addLog(`发送失败: ${file.name}，连接已断开`, 'error');
@@ -700,7 +674,7 @@
         renderPendingFiles();
     }
 
-    function handleData(data) {
+    function handleDataChannelMessage(data) {
         if(typeof data === 'string') {
             try {
                 const msg = JSON.parse(data);
@@ -714,7 +688,7 @@
                     addLog(`准备接收: ${receivingMeta.name}`, 'info');
                 }
             } catch(e) {
-                // 忽略非JSON消息
+                addLog(`收到文本: ${data}`, 'info');
             }
         } else if(data instanceof ArrayBuffer) {
             if(receivingMeta) {
@@ -747,168 +721,215 @@
         }
     }
 
-    function setupConnection(conn) {
-        if(currentConn && currentConn !== conn && currentConn.open) {
-            currentConn.close();
+    async function createOffer() {
+        if(peerConnection) {
+            peerConnection.close();
         }
         
-        currentConn = conn;
+        peerConnection = new RTCPeerConnection(configuration);
         
-        // 清除之前的超时定时器
-        if(connectionAttempt) {
-            clearTimeout(connectionAttempt);
-            connectionAttempt = null;
+        // 创建数据通道
+        dataChannel = peerConnection.createDataChannel('fileTransfer');
+        dataChannel.onopen = () => {
+            addLog('数据通道已打开', 'success');
+            updateConnectionStatus(true, '已连接');
+        };
+        dataChannel.onclose = () => {
+            addLog('数据通道已关闭', 'error');
+            updateConnectionStatus(false, '连接已断开');
+        };
+        dataChannel.onmessage = (event) => {
+            handleDataChannelMessage(event.data);
+        };
+        dataChannel.onerror = (err) => {
+            addLog(`数据通道错误: ${err.message}`, 'error');
+        };
+        
+        // ICE 候选收集
+        peerConnection.onicecandidate = (event) => {
+            if(event.candidate) {
+                // 动态更新 SDP（可选，简化处理）
+                addLog(`ICE候选已收集`, 'info');
+            }
+        };
+        
+        peerConnection.oniceconnectionstatechange = () => {
+            const state = peerConnection.iceConnectionState;
+            addLog(`ICE状态: ${state}`, 'info');
+            if(state === 'connected') {
+                updateConnectionStatus(true, '已连接');
+            } else if(state === 'failed' || state === 'disconnected') {
+                updateConnectionStatus(false, '连接断开');
+            }
+        };
+        
+        const offer = await peerConnection.createOffer();
+        await peerConnection.setLocalDescription(offer);
+        
+        localSdp = offer;
+        mySdpContent.innerText = JSON.stringify(offer);
+        mySdpBox.style.display = 'block';
+        addLog('Offer 已生成，请复制并发送给对方', 'success');
+        
+        return offer;
+    }
+    
+    async function createAnswer(remoteOfferStr) {
+        if(peerConnection) {
+            peerConnection.close();
         }
         
-        conn.on('open', () => {
-            addLog(`数据通道已建立，可以互传文件了！`, 'success');
-            updateConnectionStatus(true, `已连接`);
-        });
+        peerConnection = new RTCPeerConnection(configuration);
         
-        conn.on('data', handleData);
-        
-        conn.on('close', () => {
-            addLog(`连接已断开`, 'error');
-            if(currentConn === conn) {
+        // 监听远端数据通道
+        peerConnection.ondatachannel = (event) => {
+            dataChannel = event.channel;
+            dataChannel.onopen = () => {
+                addLog('数据通道已打开', 'success');
+                updateConnectionStatus(true, '已连接');
+            };
+            dataChannel.onclose = () => {
+                addLog('数据通道已关闭', 'error');
                 updateConnectionStatus(false, '连接已断开');
-                currentConn = null;
+            };
+            dataChannel.onmessage = (event) => {
+                handleDataChannelMessage(event.data);
+            };
+            dataChannel.onerror = (err) => {
+                addLog(`数据通道错误: ${err.message}`, 'error');
+            };
+        };
+        
+        peerConnection.onicecandidate = (event) => {
+            if(event.candidate) {
+                addLog(`ICE候选已收集`, 'info');
             }
-        });
+        };
         
-        conn.on('error', (err) => {
-            addLog(`连接错误: ${err.message}`, 'error');
-            if(currentConn === conn) {
-                updateConnectionStatus(false, '连接错误');
-                currentConn = null;
+        peerConnection.oniceconnectionstatechange = () => {
+            const state = peerConnection.iceConnectionState;
+            addLog(`ICE状态: ${state}`, 'info');
+            if(state === 'connected') {
+                updateConnectionStatus(true, '已连接');
+            } else if(state === 'failed' || state === 'disconnected') {
+                updateConnectionStatus(false, '连接断开');
             }
-        });
+        };
+        
+        const remoteOffer = JSON.parse(remoteOfferStr);
+        await peerConnection.setRemoteDescription(remoteOffer);
+        
+        const answer = await peerConnection.createAnswer();
+        await peerConnection.setLocalDescription(answer);
+        
+        localSdp = answer;
+        mySdpContent.innerText = JSON.stringify(answer);
+        mySdpBox.style.display = 'block';
+        addLog('Answer 已生成，请复制并发送给发起方', 'success');
+        
+        return answer;
     }
-
-    async function createPeerWithRoom(roomId) {
-        if(peer && !peer.destroyed) {
-            peer.destroy();
+    
+    async function setRemoteDescription(remoteSdpStr) {
+        if(!peerConnection) {
+            addLog('请先选择角色', 'error');
+            return false;
         }
         
-        return new Promise((resolve, reject) => {
-            const peerId = `room_${roomId}`;
-            addLog(`正在创建房间 ${roomId}...`, 'info');
-            
-            const newPeer = new Peer(peerId, peerConfig);
-            
-            const timeout = setTimeout(() => {
-                if(newPeer && !newPeer.destroyed) {
-                    addLog(`创建房间超时，正在重试...`, 'error');
-                    newPeer.destroy();
-                    const newRoomId = generateRoomId();
-                    createPeerWithRoom(newRoomId).then(resolve).catch(reject);
-                }
-            }, 10000);
-            
-            newPeer.on('open', () => {
-                clearTimeout(timeout);
-                peer = newPeer;
-                myRoomId = roomId;
-                roomNumberSpan.innerText = roomId;
-                addLog(`房间号 ${roomId} 创建成功！`, 'success');
-                updateConnectionStatus(false, '等待对方连接');
-                
-                peer.on('connection', (conn) => {
-                    addLog(`收到来自 ${conn.peer} 的连接请求`, 'info');
-                    setupConnection(conn);
-                });
-                
-                resolve();
-            });
-            
-            newPeer.on('error', (err) => {
-                clearTimeout(timeout);
-                if(err.type === 'unavailable-id') {
-                    addLog(`房间号 ${roomId} 已被占用，自动更换`, 'error');
-                    const newRoomId = generateRoomId();
-                    createPeerWithRoom(newRoomId).then(resolve).catch(reject);
-                } else {
-                    addLog(`Peer错误: ${err.message}`, 'error');
-                    reject(err);
-                }
-            });
-        });
+        try {
+            const remoteDesc = JSON.parse(remoteSdpStr);
+            await peerConnection.setRemoteDescription(remoteDesc);
+            addLog('远端信令设置成功', 'success');
+            return true;
+        } catch(e) {
+            addLog(`设置远端信令失败: ${e.message}`, 'error');
+            return false;
+        }
     }
-
-    function connectToRoom(roomId) {
-        if(!peer) {
-            addLog('请先创建房间', 'error');
-            return;
+    
+    function resetConnection() {
+        if(peerConnection) {
+            peerConnection.close();
+            peerConnection = null;
         }
-        if(!roomId || roomId.length !== 4 || !/^\d{4}$/.test(roomId)) {
-            addLog('请输入4位数字房间号', 'error');
-            return;
-        }
-        if(roomId === myRoomId) {
-            addLog('不能连接自己的房间', 'error');
-            return;
-        }
+        dataChannel = null;
+        isConnected = false;
+        currentRole = null;
+        localSdp = null;
+        mySdpBox.style.display = 'none';
+        remoteSdpInput.value = '';
+        mySdpContent.innerText = '';
+        updateConnectionStatus(false, '已重置');
+        addLog('连接已重置', 'info');
         
-        const targetPeerId = `room_${roomId}`;
-        addLog(`正在连接到房间 ${roomId}...`, 'info');
-        
-        if(currentConn) {
-            currentConn.close();
-            currentConn = null;
-        }
-        
-        // 显示连接中状态
+        // 重置角色按钮样式
+        roleOfferBtn.classList.remove('active');
+        roleAnswerBtn.classList.remove('active');
+    }
+    
+    // 事件绑定
+    roleOfferBtn.addEventListener('click', async () => {
+        resetConnection();
+        currentRole = 'offer';
+        roleOfferBtn.classList.add('active');
+        addLog('已选择【发起方】角色，正在生成 Offer...', 'info');
         statusLed.className = 'led yellow';
-        statusTextSpan.innerText = '连接中...';
+        statusTextSpan.innerText = '生成信令中...';
+        await createOffer();
+        statusLed.className = 'led red';
+        statusTextSpan.innerText = '等待对方 Answer';
+    });
+    
+    roleAnswerBtn.addEventListener('click', () => {
+        resetConnection();
+        currentRole = 'answer';
+        roleAnswerBtn.classList.add('active');
+        addLog('已选择【接收方】角色，等待粘贴对方的 Offer...', 'info');
+        statusLed.className = 'led red';
+        statusTextSpan.innerText = '等待 Offer';
+    });
+    
+    copyMySdpBtn.addEventListener('click', () => {
+        if(localSdp) {
+            navigator.clipboard.writeText(JSON.stringify(localSdp)).then(() => {
+                addLog('信令已复制', 'success');
+                copyMySdpBtn.innerText = '已复制！';
+                setTimeout(() => {
+                    copyMySdpBtn.innerText = '复制';
+                }, 1500);
+            }).catch(() => {
+                addLog('复制失败，请手动复制', 'error');
+            });
+        }
+    });
+    
+    exchangeBtn.addEventListener('click', async () => {
+        const remoteSdp = remoteSdpInput.value.trim();
+        if(!remoteSdp) {
+            addLog('请先粘贴对方的信令', 'error');
+            return;
+        }
         
-        const conn = peer.connect(targetPeerId, {
-            reliable: true
-        });
-        
-        // 设置连接超时
-        connectionAttempt = setTimeout(() => {
-            if(currentConn === conn && (!conn.open || conn.peerConnection?.iceConnectionState !== 'connected')) {
-                addLog(`连接房间 ${roomId} 超时`, 'error');
-                updateConnectionStatus(false, '连接超时');
-                if(conn && !conn.open) {
-                    conn.close();
-                }
+        if(currentRole === 'offer') {
+            // 发起方：设置对方的 Answer
+            const success = await setRemoteDescription(remoteSdp);
+            if(success) {
+                addLog('Answer 设置成功，连接建立中...', 'success');
             }
-            connectionAttempt = null;
-        }, 15000);
-        
-        setupConnection(conn);
-    }
-
-    async function refreshRoom() {
-        if(connectionAttempt) {
-            clearTimeout(connectionAttempt);
-            connectionAttempt = null;
+        } else if(currentRole === 'answer') {
+            // 接收方：设置对方的 Offer，然后生成 Answer
+            const success = await setRemoteDescription(remoteSdp);
+            if(success) {
+                await createAnswer(remoteSdp);
+            }
+        } else {
+            addLog('请先选择角色（发起方或接收方）', 'error');
         }
-        const newRoomId = generateRoomId();
-        await createPeerWithRoom(newRoomId);
-        if(currentConn) {
-            currentConn.close();
-            currentConn = null;
-        }
-        updateConnectionStatus(false, '已更换房间号');
-        addLog(`房间号已更换为 ${newRoomId}`, 'success');
-    }
-
-    function copyRoom() {
-        if(!myRoomId) return;
-        navigator.clipboard.writeText(myRoomId).then(() => {
-            addLog('房间号已复制', 'success');
-            const btn = copyRoomBtn;
-            const originalText = btn.innerText;
-            btn.innerText = '已复制！';
-            setTimeout(() => {
-                btn.innerText = originalText;
-            }, 1500);
-        }).catch(() => {
-            addLog('复制失败，请手动复制', 'error');
-        });
-    }
-
+    });
+    
+    resetBtn.addEventListener('click', resetConnection);
+    
+    // 文件相关
     function addFiles(fileList) {
         let addedCount = 0;
         for(let file of fileList) {
@@ -924,32 +945,6 @@
             addLog(`已添加 ${addedCount} 个文件，共 ${pendingFiles.length} 个待发送`, 'success');
         }
     }
-
-    // 事件绑定
-    connectBtn.addEventListener('click', () => {
-        const targetRoom = targetRoomInput.value.trim();
-        if(targetRoom) {
-            connectToRoom(targetRoom);
-        } else {
-            addLog('请输入对方房间号', 'error');
-        }
-    });
-    
-    disconnectBtn.addEventListener('click', () => {
-        if(currentConn) {
-            currentConn.close();
-            currentConn = null;
-        }
-        updateConnectionStatus(false, '已断开');
-        addLog('手动断开连接', 'info');
-    });
-    
-    copyRoomBtn.addEventListener('click', copyRoom);
-    refreshRoomBtn.addEventListener('click', refreshRoom);
-    
-    targetRoomInput.addEventListener('input', (e) => {
-        e.target.value = e.target.value.replace(/[^\d]/g, '').slice(0, 4);
-    });
     
     fileInput.addEventListener('change', (e) => {
         if(e.target.files.length > 0) {
@@ -978,7 +973,7 @@
     });
     
     sendBtn.addEventListener('click', () => {
-        if(!isConnected) {
+        if(!isConnected || !dataChannel || dataChannel.readyState !== 'open') {
             addLog('未连接，无法发送', 'error');
         } else if(pendingFiles.length === 0) {
             addLog('请先选择文件', 'error');
@@ -987,12 +982,6 @@
         }
     });
     
-    // 初始化
-    const initRoom = generateRoomId();
-    createPeerWithRoom(initRoom).catch(err => {
-        addLog(`初始化失败: ${err.message}，请刷新页面重试`, 'error');
-    });
-
     function escapeHtml(str) {
         return str.replace(/[&<>]/g, function(m) {
             if(m === '&') return '&amp;';

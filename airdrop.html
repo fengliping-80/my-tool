@@ -1,15 +1,11 @@
-明白了！你希望**只要一方发起连接，连接成功后双方都能互相发送文件**，而不是只有发起方才能发送。
-
-这个功能其实代码已经支持了！因为 `peer.on('connection')` 和主动 `peer.connect()` 都会调用同一个 `setupConnection()` 函数，双方都会建立相同的连接对象。
-
-但是从你的截图看，按钮被禁用是因为**连接建立后，一方没有正确识别连接状态**。我来修复这个问题，确保连接成功后双方都能正常发送文件。
+我明白问题了！连接超时是因为 PeerJS 的免费 STUN/TURN 服务器在某些网络环境下（特别是公司网络）无法正常打洞。我来彻底解决这个问题，使用更可靠的公共 STUN 服务器，并添加多个备用服务器。
 ```html
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=yes">
-    <title>文件快传 | 4位数字互传</title>
+    <title>文件快传 | 稳定P2P互传</title>
     <style>
         * {
             margin: 0;
@@ -199,6 +195,16 @@
             background: #e74c3c;
         }
 
+        .led.yellow {
+            background: #f1c40f;
+            animation: pulse 1s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
         .transfer-card {
             background: white;
             border-radius: 28px;
@@ -332,6 +338,18 @@
             border-bottom: 1px solid #333;
         }
 
+        .log-entry.success {
+            color: #8bc34a;
+        }
+
+        .log-entry.error {
+            color: #ff6b6b;
+        }
+
+        .log-entry.info {
+            color: #64b5f6;
+        }
+
         .tip {
             background: #fff3cd;
             border-radius: 16px;
@@ -339,6 +357,17 @@
             font-size: 0.75rem;
             color: #856404;
             margin-top: 12px;
+        }
+
+        .retry-btn {
+            background: #ffc107;
+            color: #333;
+            margin-left: 8px;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.7rem;
+            border: none;
+            cursor: pointer;
         }
 
         @media (max-width: 480px) {
@@ -359,7 +388,7 @@
 <div class="app">
     <div class="header-card">
         <h1>📡 文件快传</h1>
-        <div class="sub">一方连接 · 双方互传 | 4位数字极简连接</div>
+        <div class="sub">稳定P2P连接 | 一方连接 · 双方互传</div>
     </div>
 
     <div class="room-card">
@@ -384,7 +413,6 @@
         </div>
     </div>
 
-    <!-- 发送区域 - 双方都有 -->
     <div class="transfer-card">
         <div class="section-title">📤 发送文件</div>
         <div class="file-dropzone" id="dropzone">
@@ -404,14 +432,15 @@
     </div>
 
     <div class="log-area" id="logArea">
-        <div class="log-entry">✨ 初始化完成，正在生成房间号...</div>
+        <div class="log-entry info">✨ 初始化完成，正在生成房间号...</div>
     </div>
 
     <div class="tip">
         💡 使用说明：<br>
         1️⃣ 电脑和手机都打开本页面，会自动生成4位房间号<br>
         2️⃣ 在任意一方输入对方的4位房间号，点击"连接"<br>
-        3️⃣ 连接成功后，<strong>双方都可以选择文件并互传</strong> 🎉
+        3️⃣ 连接成功后，双方都可以选择文件并互传 🎉<br>
+        ⚠️ 如果连接超时，请点击"更换房间号"重试，或检查是否在同一网络
     </div>
 </div>
 
@@ -439,21 +468,70 @@
     let myRoomId = null;
     let isConnected = false;
     let pendingFiles = [];
+    let reconnectTimeout = null;
+    let connectionAttempt = null;
     
     // 接收文件缓冲
     let receivingMeta = null;
     let receivingBuffer = [];
+
+    // 多组 STUN/TURN 服务器配置 - 提高连接成功率
+    const peerConfig = {
+        config: {
+            iceServers: [
+                // Google 公共 STUN 服务器
+                { urls: 'stun:stun.l.google.com:19302' },
+                { urls: 'stun:stun1.l.google.com:19302' },
+                { urls: 'stun:stun2.l.google.com:19302' },
+                { urls: 'stun:stun3.l.google.com:19302' },
+                { urls: 'stun:stun4.l.google.com:19302' },
+                // 其他公共 STUN 服务器
+                { urls: 'stun:stun.ekiga.net' },
+                { urls: 'stun:stun.ideasip.com' },
+                { urls: 'stun:stun.iptel.org' },
+                { urls: 'stun:stun.rixtelecom.se' },
+                { urls: 'stun:stun.schlund.de' },
+                { urls: 'stun:stun.stunprotocol.org:3478' },
+                { urls: 'stun:stun.voiparound.com' },
+                { urls: 'stun:stun.voipbuster.com' },
+                { urls: 'stun:stun.voipstunt.com' },
+                { urls: 'stun:stun.voxgratia.org' },
+                // 公共 TURN 服务器（备选，某些网络需要）
+                {
+                    urls: 'turn:openrelay.metered.ca:80',
+                    username: 'openrelayproject',
+                    credential: 'openrelayproject'
+                },
+                {
+                    urls: 'turn:openrelay.metered.ca:443',
+                    username: 'openrelayproject',
+                    credential: 'openrelayproject'
+                },
+                {
+                    urls: 'turn:openrelay.metered.ca:443?transport=tcp',
+                    username: 'openrelayproject',
+                    credential: 'openrelayproject'
+                }
+            ],
+            iceCandidatePoolSize: 10,
+            iceTransportPolicy: 'all'
+        }
+    };
 
     // 生成随机4位数字
     function generateRoomId() {
         return Math.floor(1000 + Math.random() * 9000).toString();
     }
 
-    function addLog(msg, isError = false) {
+    function addLog(msg, type = 'info') {
         const logDiv = document.createElement('div');
-        logDiv.className = 'log-entry';
-        logDiv.style.color = isError ? '#ff6b6b' : '#8bc34a';
-        logDiv.innerHTML = `[${new Date().toLocaleTimeString()}] ${msg}`;
+        logDiv.className = `log-entry ${type}`;
+        const time = new Date().toLocaleTimeString();
+        let icon = '';
+        if(type === 'success') icon = '✅ ';
+        else if(type === 'error') icon = '❌ ';
+        else if(type === 'info') icon = 'ℹ️ ';
+        logDiv.innerHTML = `[${time}] ${icon}${msg}`;
         logArea.appendChild(logDiv);
         logDiv.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
         while(logArea.children.length > 50) {
@@ -461,30 +539,30 @@
         }
     }
 
-    // 更新连接状态 - 关键修复：确保连接成功后启用发送按钮
+    // 更新连接状态
     function updateConnectionStatus(connected, msg) {
         if(connected) {
             statusLed.className = 'led green';
             statusTextSpan.innerText = msg || '已连接';
             isConnected = true;
-            addLog(`✅ ${msg || '连接已建立'}`);
+            addLog(`连接成功！${msg || ''}`, 'success');
         } else {
             statusLed.className = 'led red';
             statusTextSpan.innerText = msg || '未连接';
             isConnected = false;
+            if(msg && msg.includes('超时')) {
+                addLog(msg, 'error');
+            }
         }
-        // 关键：更新发送按钮状态（连接成功且有文件时才启用）
         updateSendButton();
     }
 
-    // 更新发送按钮状态
     function updateSendButton() {
         const hasFiles = pendingFiles.length > 0;
         const canSend = isConnected && hasFiles;
         sendBtn.disabled = !canSend;
     }
 
-    // 渲染待发送文件列表
     function renderPendingFiles() {
         if(pendingFiles.length === 0) {
             selectedFilesList.innerHTML = '<div style="color:#999; text-align:center; padding:12px;">暂无待发送文件<br>👆 点击上方区域选择文件</div>';
@@ -497,10 +575,11 @@
             let sizeStr = file.size < 1024*1024 
                 ? (file.size/1024).toFixed(1) + ' KB'
                 : (file.size/(1024*1024)).toFixed(1) + ' MB';
+            let name = file.name.length > 30 ? file.name.substring(0, 27) + '...' : file.name;
             html += `
                 <div class="file-item">
                     <div class="file-info">
-                        <div class="file-name">📄 ${escapeHtml(file.name)}</div>
+                        <div class="file-name">📄 ${escapeHtml(name)}</div>
                         <div class="file-size">${sizeStr}</div>
                     </div>
                     <button class="remove-file" data-index="${idx}">✕</button>
@@ -523,7 +602,6 @@
         updateSendButton();
     }
 
-    // 添加接收到的文件
     function addReceivedFile(file, dataUrl, blob) {
         if(receivedArea.querySelector('div') && receivedArea.children.length === 1 && receivedArea.children[0].innerText.includes('暂无')) {
             receivedArea.innerHTML = '';
@@ -558,6 +636,7 @@
                 a.href = dataUrl;
                 a.download = file.name;
                 a.click();
+                addLog(`下载文件: ${file.name}`, 'info');
             });
         } else if(blob) {
             downloadBtn.addEventListener('click', () => {
@@ -567,27 +646,26 @@
                 a.download = file.name;
                 a.click();
                 URL.revokeObjectURL(url);
+                addLog(`下载文件: ${file.name}`, 'info');
             });
         }
         
         receivedArea.prepend(receivedDiv);
-        addLog(`✅ 收到文件: ${file.name} (${sizeStr})`);
+        addLog(`收到文件: ${file.name} (${sizeStr})`, 'success');
     }
 
-    // 发送文件
     function sendFiles() {
         if(!currentConn || !isConnected) {
-            addLog('❌ 未连接，无法发送', true);
+            addLog('未连接，无法发送', 'error');
             return;
         }
         if(pendingFiles.length === 0) {
-            addLog('⚠️ 请先选择文件', true);
+            addLog('请先选择文件', 'error');
             return;
         }
         
-        addLog(`📤 开始发送 ${pendingFiles.length} 个文件...`);
+        addLog(`开始发送 ${pendingFiles.length} 个文件...`, 'info');
         
-        // 复制一份待发送列表，避免发送过程中被修改
         const filesToSend = [...pendingFiles];
         
         filesToSend.forEach((file, index) => {
@@ -605,25 +683,23 @@
                     setTimeout(() => {
                         if(currentConn && currentConn.open) {
                             currentConn.send(arrayBuffer);
-                            addLog(`✓ 已发送: ${file.name}`);
+                            addLog(`已发送: ${file.name}`, 'success');
                         } else {
-                            addLog(`❌ 发送失败: ${file.name}，连接已断开`, true);
+                            addLog(`发送失败: ${file.name}，连接已断开`, 'error');
                         }
                     }, 100);
                 } catch(e) {
-                    addLog(`❌ 发送出错: ${e.message}`, true);
+                    addLog(`发送出错: ${e.message}`, 'error');
                 }
             };
-            reader.onerror = () => addLog(`❌ 读取文件失败: ${file.name}`, true);
+            reader.onerror = () => addLog(`读取文件失败: ${file.name}`, 'error');
             reader.readAsArrayBuffer(file);
         });
         
-        // 清空待发送列表
         pendingFiles = [];
         renderPendingFiles();
     }
 
-    // 处理接收到的数据
     function handleData(data) {
         if(typeof data === 'string') {
             try {
@@ -635,10 +711,10 @@
                         size: msg.size
                     };
                     receivingBuffer = [];
-                    addLog(`📥 准备接收: ${receivingMeta.name}`);
+                    addLog(`准备接收: ${receivingMeta.name}`, 'info');
                 }
             } catch(e) {
-                // 不是JSON，忽略
+                // 忽略非JSON消息
             }
         } else if(data instanceof ArrayBuffer) {
             if(receivingMeta) {
@@ -671,25 +747,28 @@
         }
     }
 
-    // 设置数据连接 - 双方都会调用这个函数
-    function setupConnection(conn, isInitiator = false) {
-        // 关闭旧连接
+    function setupConnection(conn) {
         if(currentConn && currentConn !== conn && currentConn.open) {
             currentConn.close();
         }
         
         currentConn = conn;
         
+        // 清除之前的超时定时器
+        if(connectionAttempt) {
+            clearTimeout(connectionAttempt);
+            connectionAttempt = null;
+        }
+        
         conn.on('open', () => {
-            const connectedTo = conn.peer;
-            addLog(`🔗 连接成功！对方ID: ${connectedTo.substring(0, 12)}...`);
+            addLog(`数据通道已建立，可以互传文件了！`, 'success');
             updateConnectionStatus(true, `已连接`);
         });
         
         conn.on('data', handleData);
         
         conn.on('close', () => {
-            addLog(`🔌 连接已断开`);
+            addLog(`连接已断开`, 'error');
             if(currentConn === conn) {
                 updateConnectionStatus(false, '连接已断开');
                 currentConn = null;
@@ -697,7 +776,7 @@
         });
         
         conn.on('error', (err) => {
-            addLog(`❌ 连接错误: ${err.message}`, true);
+            addLog(`连接错误: ${err.message}`, 'error');
             if(currentConn === conn) {
                 updateConnectionStatus(false, '连接错误');
                 currentConn = null;
@@ -705,7 +784,6 @@
         });
     }
 
-    // 使用房间号创建Peer
     async function createPeerWithRoom(roomId) {
         if(peer && !peer.destroyed) {
             peer.destroy();
@@ -713,73 +791,99 @@
         
         return new Promise((resolve, reject) => {
             const peerId = `room_${roomId}`;
-            const newPeer = new Peer(peerId);
+            addLog(`正在创建房间 ${roomId}...`, 'info');
+            
+            const newPeer = new Peer(peerId, peerConfig);
+            
+            const timeout = setTimeout(() => {
+                if(newPeer && !newPeer.destroyed) {
+                    addLog(`创建房间超时，正在重试...`, 'error');
+                    newPeer.destroy();
+                    const newRoomId = generateRoomId();
+                    createPeerWithRoom(newRoomId).then(resolve).catch(reject);
+                }
+            }, 10000);
             
             newPeer.on('open', () => {
+                clearTimeout(timeout);
                 peer = newPeer;
                 myRoomId = roomId;
                 roomNumberSpan.innerText = roomId;
-                addLog(`✅ 房间号 ${roomId} 创建成功！`);
+                addLog(`房间号 ${roomId} 创建成功！`, 'success');
                 updateConnectionStatus(false, '等待对方连接');
                 
-                // 监听别人发起的连接
                 peer.on('connection', (conn) => {
-                    addLog(`📞 收到来自 ${conn.peer} 的连接请求`);
-                    setupConnection(conn, false);
+                    addLog(`收到来自 ${conn.peer} 的连接请求`, 'info');
+                    setupConnection(conn);
                 });
                 
                 resolve();
             });
             
             newPeer.on('error', (err) => {
+                clearTimeout(timeout);
                 if(err.type === 'unavailable-id') {
-                    addLog(`⚠️ 房间号 ${roomId} 已被占用，自动更换`, true);
+                    addLog(`房间号 ${roomId} 已被占用，自动更换`, 'error');
                     const newRoomId = generateRoomId();
                     createPeerWithRoom(newRoomId).then(resolve).catch(reject);
                 } else {
+                    addLog(`Peer错误: ${err.message}`, 'error');
                     reject(err);
                 }
             });
         });
     }
 
-    // 连接到对方房间
     function connectToRoom(roomId) {
         if(!peer) {
-            addLog('❌ 请先创建房间', true);
+            addLog('请先创建房间', 'error');
             return;
         }
         if(!roomId || roomId.length !== 4 || !/^\d{4}$/.test(roomId)) {
-            addLog('❌ 请输入4位数字房间号', true);
+            addLog('请输入4位数字房间号', 'error');
             return;
         }
         if(roomId === myRoomId) {
-            addLog('❌ 不能连接自己的房间', true);
+            addLog('不能连接自己的房间', 'error');
             return;
         }
         
         const targetPeerId = `room_${roomId}`;
-        addLog(`🔄 正在连接到房间 ${roomId}...`);
+        addLog(`正在连接到房间 ${roomId}...`, 'info');
         
-        // 如果已有连接，先断开
         if(currentConn) {
             currentConn.close();
             currentConn = null;
         }
         
-        const conn = peer.connect(targetPeerId);
-        setupConnection(conn, true);
+        // 显示连接中状态
+        statusLed.className = 'led yellow';
+        statusTextSpan.innerText = '连接中...';
         
-        // 设置超时提示
-        setTimeout(() => {
+        const conn = peer.connect(targetPeerId, {
+            reliable: true
+        });
+        
+        // 设置连接超时
+        connectionAttempt = setTimeout(() => {
             if(currentConn === conn && (!conn.open || conn.peerConnection?.iceConnectionState !== 'connected')) {
-                addLog(`⚠️ 连接房间 ${roomId} 超时，请确保对方也在线`, true);
+                addLog(`连接房间 ${roomId} 超时`, 'error');
+                updateConnectionStatus(false, '连接超时');
+                if(conn && !conn.open) {
+                    conn.close();
+                }
             }
-        }, 10000);
+            connectionAttempt = null;
+        }, 15000);
+        
+        setupConnection(conn);
     }
 
-    // 更换房间号
     async function refreshRoom() {
+        if(connectionAttempt) {
+            clearTimeout(connectionAttempt);
+            connectionAttempt = null;
+        }
         const newRoomId = generateRoomId();
         await createPeerWithRoom(newRoomId);
         if(currentConn) {
@@ -787,14 +891,13 @@
             currentConn = null;
         }
         updateConnectionStatus(false, '已更换房间号');
-        addLog(`🔄 房间号已更换为 ${newRoomId}`);
+        addLog(`房间号已更换为 ${newRoomId}`, 'success');
     }
 
-    // 复制房间号
     function copyRoom() {
         if(!myRoomId) return;
         navigator.clipboard.writeText(myRoomId).then(() => {
-            addLog('✅ 房间号已复制');
+            addLog('房间号已复制', 'success');
             const btn = copyRoomBtn;
             const originalText = btn.innerText;
             btn.innerText = '已复制！';
@@ -802,21 +905,24 @@
                 btn.innerText = originalText;
             }, 1500);
         }).catch(() => {
-            addLog('❌ 复制失败，请手动复制', true);
+            addLog('复制失败，请手动复制', 'error');
         });
     }
 
-    // 添加文件
     function addFiles(fileList) {
+        let addedCount = 0;
         for(let file of fileList) {
             if(file.size > 100 * 1024 * 1024) {
-                addLog(`⚠️ ${file.name} 超过100MB，已跳过`, true);
+                addLog(`${file.name} 超过100MB，已跳过`, 'error');
                 continue;
             }
             pendingFiles.push(file);
+            addedCount++;
         }
-        renderPendingFiles();
-        addLog(`📎 已添加 ${fileList.length} 个文件，共 ${pendingFiles.length} 个待发送`);
+        if(addedCount > 0) {
+            renderPendingFiles();
+            addLog(`已添加 ${addedCount} 个文件，共 ${pendingFiles.length} 个待发送`, 'success');
+        }
     }
 
     // 事件绑定
@@ -825,7 +931,7 @@
         if(targetRoom) {
             connectToRoom(targetRoom);
         } else {
-            addLog('❌ 请输入对方房间号', true);
+            addLog('请输入对方房间号', 'error');
         }
     });
     
@@ -835,7 +941,7 @@
             currentConn = null;
         }
         updateConnectionStatus(false, '已断开');
-        addLog('🔌 手动断开连接');
+        addLog('手动断开连接', 'info');
     });
     
     copyRoomBtn.addEventListener('click', copyRoom);
@@ -873,9 +979,9 @@
     
     sendBtn.addEventListener('click', () => {
         if(!isConnected) {
-            addLog('❌ 未连接，无法发送', true);
+            addLog('未连接，无法发送', 'error');
         } else if(pendingFiles.length === 0) {
-            addLog('⚠️ 请先选择文件', true);
+            addLog('请先选择文件', 'error');
         } else {
             sendFiles();
         }
@@ -884,7 +990,7 @@
     // 初始化
     const initRoom = generateRoomId();
     createPeerWithRoom(initRoom).catch(err => {
-        addLog(`❌ 初始化失败: ${err.message}`, true);
+        addLog(`初始化失败: ${err.message}，请刷新页面重试`, 'error');
     });
 
     function escapeHtml(str) {

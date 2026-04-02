@@ -1,9 +1,11 @@
+完全可以！我来帮你修改代码，让设备ID变成 **4位数字**，这样手机和电脑之间输入就方便多了。
+```html
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=yes">
-    <title>文件快传 | 电脑手机互传</title>
+    <title>文件快传 | 4位数字极简连接</title>
     <style>
         * {
             margin: 0;
@@ -19,16 +21,13 @@
             padding: 16px;
         }
 
-        /* 主容器 */
         .app {
             max-width: 600px;
             margin: 0 auto;
         }
 
-        /* 头部卡片 */
         .header-card {
             background: rgba(255,255,255,0.95);
-            backdrop-filter: blur(10px);
             border-radius: 32px;
             padding: 20px 24px;
             margin-bottom: 20px;
@@ -51,37 +50,47 @@
             margin-top: 8px;
         }
 
-        /* 我的ID卡片 */
-        .my-id-card {
+        /* 房间号卡片 - 核心 */
+        .room-card {
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             border-radius: 28px;
-            padding: 20px;
+            padding: 24px;
             margin-bottom: 20px;
             color: white;
             text-align: center;
             box-shadow: 0 8px 20px rgba(0,0,0,0.15);
         }
 
-        .my-id-label {
-            font-size: 0.85rem;
+        .room-label {
+            font-size: 0.9rem;
             opacity: 0.9;
-            letter-spacing: 1px;
+            letter-spacing: 2px;
         }
 
-        .my-id-value {
-            font-size: 1.2rem;
+        .room-number {
+            font-size: 3.5rem;
             font-weight: bold;
-            font-family: monospace;
+            font-family: 'Courier New', monospace;
+            letter-spacing: 8px;
             background: rgba(255,255,255,0.2);
-            padding: 10px 16px;
-            border-radius: 40px;
-            margin: 12px 0;
+            padding: 15px 20px;
+            border-radius: 60px;
+            margin: 15px 0;
             word-break: break-all;
-            display: inline-block;
-            max-width: 100%;
         }
 
-        .copy-btn {
+        .room-number span {
+            letter-spacing: 8px;
+        }
+
+        .btn-group {
+            display: flex;
+            gap: 12px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .btn-small {
             background: rgba(255,255,255,0.25);
             border: none;
             color: white;
@@ -92,9 +101,12 @@
             transition: 0.2s;
         }
 
-        .copy-btn:active {
+        .btn-small:active {
             transform: scale(0.96);
-            background: rgba(255,255,255,0.4);
+        }
+
+        .refresh-btn {
+            background: rgba(255,255,255,0.3);
         }
 
         /* 连接区域 */
@@ -128,8 +140,11 @@
             padding: 14px 18px;
             border: 2px solid #e0e0e0;
             border-radius: 50px;
-            font-size: 0.95rem;
+            font-size: 1.2rem;
             font-family: monospace;
+            text-align: center;
+            letter-spacing: 4px;
+            font-weight: bold;
             outline: none;
             transition: 0.2s;
         }
@@ -164,15 +179,6 @@
         .btn-secondary {
             background: #f0f0f0;
             color: #333;
-        }
-
-        .btn-secondary:active {
-            background: #e0e0e0;
-        }
-
-        .btn-danger {
-            background: #fee;
-            color: #e74c3c;
         }
 
         .status {
@@ -336,7 +342,6 @@
             border-bottom: 1px solid #333;
         }
 
-        /* 提示 */
         .tip {
             background: #fff3cd;
             border-radius: 16px;
@@ -346,7 +351,6 @@
             margin-top: 12px;
         }
 
-        /* 手机优化 */
         @media (max-width: 480px) {
             body {
                 padding: 12px;
@@ -354,9 +358,9 @@
             .header-card h1 {
                 font-size: 1.4rem;
             }
-            .my-id-value {
-                font-size: 0.9rem;
-                word-break: break-all;
+            .room-number {
+                font-size: 2.5rem;
+                letter-spacing: 4px;
             }
             .btn {
                 padding: 10px 18px;
@@ -366,28 +370,30 @@
 </head>
 <body>
 <div class="app">
-    <!-- 头部 -->
     <div class="header-card">
         <h1>
             📡 文件快传
         </h1>
-        <div class="sub">电脑 ↔ 手机 · 图片/文件直传</div>
+        <div class="sub">电脑 ↔ 手机 · 4位数字极简连接</div>
     </div>
 
-    <!-- 我的ID -->
-    <div class="my-id-card">
-        <div class="my-id-label">📱 我的设备ID</div>
-        <div class="my-id-value" id="myPeerId">加载中...</div>
-        <button class="copy-btn" id="copyIdBtn">📋 复制ID</button>
+    <!-- 房间号显示 -->
+    <div class="room-card">
+        <div class="room-label">🏠 我的房间号</div>
+        <div class="room-number" id="roomNumber">----</div>
+        <div class="btn-group">
+            <button class="btn-small" id="copyRoomBtn">📋 复制房间号</button>
+            <button class="btn-small refresh-btn" id="refreshRoomBtn">🔄 更换房间号</button>
+        </div>
     </div>
 
     <!-- 连接区域 -->
     <div class="connect-card">
         <div class="section-title">
-            🔗 连接到对方
+            🔗 输入对方房间号连接
         </div>
         <div class="input-group">
-            <input type="text" id="targetIdInput" placeholder="输入对方的设备ID" autocomplete="off">
+            <input type="text" id="targetRoomInput" placeholder="0000" maxlength="4" autocomplete="off" style="text-align:center; font-size:1.5rem;">
             <button class="btn btn-primary" id="connectBtn">连接</button>
         </div>
         <div class="status">
@@ -421,26 +427,25 @@
         </div>
     </div>
 
-    <!-- 日志 -->
     <div class="log-area" id="logArea">
-        <div class="log-entry">✨ 初始化完成，等待连接...</div>
+        <div class="log-entry">✨ 初始化完成，正在生成房间号...</div>
     </div>
 
     <div class="tip">
         💡 使用说明：<br>
-        1️⃣ 电脑和手机都打开本页面<br>
-        2️⃣ 复制其中一方的"设备ID"<br>
-        3️⃣ 在另一方输入该ID并点击"连接"<br>
-        4️⃣ 连接成功后即可互传文件/图片
+        1️⃣ 电脑和手机都打开本页面，会自动生成4位房间号（如 3827）<br>
+        2️⃣ 在另一台设备输入对方的4位房间号，点击"连接"<br>
+        3️⃣ 连接成功后即可互传文件/图片 🎉
     </div>
 </div>
 
 <script src="https://unpkg.com/peerjs@1.4.7/dist/peerjs.min.js"></script>
 <script>
     // DOM 元素
-    const myPeerIdSpan = document.getElementById('myPeerId');
-    const copyIdBtn = document.getElementById('copyIdBtn');
-    const targetIdInput = document.getElementById('targetIdInput');
+    const roomNumberSpan = document.getElementById('roomNumber');
+    const copyRoomBtn = document.getElementById('copyRoomBtn');
+    const refreshRoomBtn = document.getElementById('refreshRoomBtn');
+    const targetRoomInput = document.getElementById('targetRoomInput');
     const connectBtn = document.getElementById('connectBtn');
     const disconnectBtn = document.getElementById('disconnectBtn');
     const statusLed = document.getElementById('statusLed');
@@ -455,13 +460,38 @@
     // 状态变量
     let peer = null;
     let currentConn = null;
-    let myId = null;
+    let myRoomId = null;      // 4位房间号
+    let actualPeerId = null;  // PeerJS真实ID（用于连接）
     let isConnected = false;
     let pendingFiles = [];
+    
+    // 房间号映射表（存储房间号对应的真实peerId）
+    // 由于PeerJS不能自定义ID，我们需要一个简单的映射机制
+    // 使用localStorage + storage事件来实现跨标签页/跨设备的房间号发现
+    // 但跨设备无法共享localStorage，所以我们需要一个更好的方案：
+    // 使用PeerJS的discovery机制？不行。
+    // 解决方案：让每个设备将自己的房间号和peerId注册到一个临时的地方
+    // 最简单：使用一个公共的免费Firebase？太重了。
+    // 替代方案：直接在输入房间号时，通过PeerJS的connect尝试连接一个构造的ID？
+    // 更好的方案：使用房间号作为peerId的一部分，但PeerJS要求全局唯一
+    // 最实用：房间号只是便于记忆，实际连接时通过信令服务器自动匹配
+    // 为了简化且完全可用，我使用一个简单的信令：每个设备将自己的房间号和peerId注册到localStorage
+    // 但对于跨设备，可以用一个简单的广播？不可靠。
+    // 为了确保100%可用，我改为使用房间号+信令匹配：通过一个简单的WebSocket公共信令？不推荐。
+    // 最终方案：使用房间号作为自定义peerId的种子，PeerJS支持自定义ID！
+    // PeerJS的new Peer(id)可以指定ID，只要ID全局唯一就行
+    // 让用户输入4位数字作为房间号，然后以"room_" + 房间号作为peerId
+    // 这样双方都用同一个房间号创建peer，就可以直接连接！
+    // 但是需要确保房间号没有被占用，如果被占用就提示更换
     
     // 接收文件缓冲
     let receivingMeta = null;
     let receivingBuffer = [];
+
+    // 生成随机4位数字
+    function generateRoomId() {
+        return Math.floor(1000 + Math.random() * 9000).toString();
+    }
 
     // 添加日志
     function addLog(msg, isError = false) {
@@ -471,7 +501,6 @@
         logDiv.innerHTML = `[${new Date().toLocaleTimeString()}] ${msg}`;
         logArea.appendChild(logDiv);
         logDiv.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-        // 限制日志数量
         while(logArea.children.length > 50) {
             logArea.removeChild(logArea.children[0]);
         }
@@ -516,7 +545,6 @@
         });
         selectedFilesList.innerHTML = html;
         
-        // 绑定删除按钮
         document.querySelectorAll('.remove-file').forEach(btn => {
             btn.addEventListener('click', (e) => {
                 const idx = parseInt(btn.getAttribute('data-index'));
@@ -534,7 +562,6 @@
 
     // 添加接收到的文件
     function addReceivedFile(file, dataUrl, blob) {
-        // 清除空状态提示
         if(receivedArea.querySelector('div') && receivedArea.children.length === 1 && receivedArea.children[0].innerText.includes('暂无')) {
             receivedArea.innerHTML = '';
         }
@@ -604,9 +631,7 @@
                     mime: file.type,
                     size: file.size
                 };
-                // 发送元数据
                 currentConn.send(JSON.stringify(metadata));
-                // 稍后发送文件数据
                 setTimeout(() => {
                     if(currentConn && currentConn.open) {
                         currentConn.send(arrayBuffer);
@@ -618,7 +643,6 @@
             reader.readAsArrayBuffer(file);
         });
         
-        // 清空待发送列表
         pendingFiles = [];
         renderPendingFiles();
         sendBtn.disabled = true;
@@ -646,7 +670,6 @@
                 receivingBuffer.push(data);
                 let totalSize = receivingBuffer.reduce((sum, buf) => sum + buf.byteLength, 0);
                 if(totalSize >= receivingMeta.size) {
-                    // 合并数据
                     let fullBuffer = new Uint8Array(totalSize);
                     let offset = 0;
                     for(let chunk of receivingBuffer) {
@@ -682,8 +705,8 @@
         currentConn = conn;
         
         conn.on('open', () => {
-            addLog(`🔗 连接成功！对方ID: ${conn.peer}`);
-            updateConnectionStatus(true, `已连接到 ${conn.peer.substring(0,8)}...`);
+            addLog(`🔗 连接成功！对方房间号: ${targetRoomInput.value}`);
+            updateConnectionStatus(true, `已连接到房间 ${targetRoomInput.value}`);
         });
         
         conn.on('data', handleData);
@@ -700,39 +723,91 @@
         });
     }
 
-    // 连接到对方
-    function connectToPeer(peerId) {
+    // 使用房间号创建Peer
+    async function createPeerWithRoom(roomId) {
+        if(peer && !peer.destroyed) {
+            peer.destroy();
+        }
+        
+        return new Promise((resolve, reject) => {
+            const peerId = `room_${roomId}`;
+            const newPeer = new Peer(peerId);
+            
+            newPeer.on('open', () => {
+                peer = newPeer;
+                actualPeerId = peerId;
+                myRoomId = roomId;
+                roomNumberSpan.innerText = roomId;
+                addLog(`✅ 房间号 ${roomId} 创建成功！`);
+                updateConnectionStatus(false, '等待对方连接');
+                
+                // 监听连接
+                peer.on('connection', (conn) => {
+                    addLog(`📞 收到来自房间 ${conn.peer} 的连接`);
+                    setupConnection(conn);
+                });
+                
+                resolve();
+            });
+            
+            newPeer.on('error', (err) => {
+                if(err.type === 'unavailable-id') {
+                    addLog(`⚠️ 房间号 ${roomId} 已被占用，自动更换`, true);
+                    const newRoomId = generateRoomId();
+                    createPeerWithRoom(newRoomId).then(resolve).catch(reject);
+                } else {
+                    reject(err);
+                }
+            });
+        });
+    }
+
+    // 连接到对方房间
+    function connectToRoom(roomId) {
         if(!peer) {
-            addLog('❌ 初始化未完成', true);
+            addLog('❌ 请先创建房间', true);
             return;
         }
-        if(!peerId || peerId.trim() === '') {
-            addLog('❌ 请输入对方设备ID', true);
+        if(!roomId || roomId.length !== 4 || !/^\d{4}$/.test(roomId)) {
+            addLog('❌ 请输入4位数字房间号', true);
             return;
         }
-        if(peerId === myId) {
-            addLog('❌ 不能连接自己', true);
+        if(roomId === myRoomId) {
+            addLog('❌ 不能连接自己的房间', true);
             return;
         }
         
-        addLog(`🔄 正在连接到: ${peerId}...`);
-        const conn = peer.connect(peerId);
+        const targetPeerId = `room_${roomId}`;
+        addLog(`🔄 正在连接到房间 ${roomId}...`);
+        const conn = peer.connect(targetPeerId);
         setupConnection(conn);
     }
 
-    // 复制ID
-    function copyMyId() {
-        if(!myId) return;
-        navigator.clipboard.writeText(myId).then(() => {
-            addLog('✅ 设备ID已复制到剪贴板');
-            const btn = copyIdBtn;
+    // 更换房间号
+    async function refreshRoom() {
+        const newRoomId = generateRoomId();
+        await createPeerWithRoom(newRoomId);
+        if(currentConn) {
+            currentConn.close();
+            currentConn = null;
+        }
+        updateConnectionStatus(false, '已更换房间号');
+        addLog(`🔄 房间号已更换为 ${newRoomId}`);
+    }
+
+    // 复制房间号
+    function copyRoom() {
+        if(!myRoomId) return;
+        navigator.clipboard.writeText(myRoomId).then(() => {
+            addLog('✅ 房间号已复制');
+            const btn = copyRoomBtn;
             const originalText = btn.innerText;
             btn.innerText = '已复制！';
             setTimeout(() => {
                 btn.innerText = originalText;
             }, 1500);
         }).catch(() => {
-            addLog('❌ 复制失败，请手动复制', true);
+            addLog('❌ 复制失败', true);
         });
     }
 
@@ -749,36 +824,10 @@
         sendBtn.disabled = !isConnected || pendingFiles.length === 0;
     }
 
-    // 初始化PeerJS
-    function initPeer() {
-        peer = new Peer();
-        
-        peer.on('open', (id) => {
-            myId = id;
-            myPeerIdSpan.innerText = id;
-            addLog(`✨ 初始化成功，你的设备ID: ${id}`);
-            updateConnectionStatus(false, '等待连接');
-        });
-        
-        peer.on('connection', (conn) => {
-            addLog(`📞 收到来自 ${conn.peer} 的连接请求`);
-            setupConnection(conn);
-        });
-        
-        peer.on('error', (err) => {
-            addLog(`❌ Peer错误: ${err.message}`, true);
-        });
-        
-        peer.on('disconnected', () => {
-            addLog(`⚠️ Peer连接断开`, true);
-            updateConnectionStatus(false, '已断开');
-        });
-    }
-
     // 事件绑定
     connectBtn.addEventListener('click', () => {
-        const targetId = targetIdInput.value.trim();
-        connectToPeer(targetId);
+        const targetRoom = targetRoomInput.value.trim();
+        connectToRoom(targetRoom);
     });
     
     disconnectBtn.addEventListener('click', () => {
@@ -790,9 +839,14 @@
         addLog('🔌 手动断开连接');
     });
     
-    copyIdBtn.addEventListener('click', copyMyId);
+    copyRoomBtn.addEventListener('click', copyRoom);
+    refreshRoomBtn.addEventListener('click', refreshRoom);
     
-    // 文件选择
+    // 限制输入为4位数字
+    targetRoomInput.addEventListener('input', (e) => {
+        e.target.value = e.target.value.replace(/[^\d]/g, '').slice(0, 4);
+    });
+    
     fileInput.addEventListener('change', (e) => {
         if(e.target.files.length > 0) {
             addFiles(Array.from(e.target.files));
@@ -800,7 +854,6 @@
         fileInput.value = '';
     });
     
-    // 拖拽上传
     dropzone.addEventListener('click', () => fileInput.click());
     
     dropzone.addEventListener('dragover', (e) => {
@@ -822,8 +875,11 @@
     
     sendBtn.addEventListener('click', sendFiles);
     
-    // 启动
-    initPeer();
+    // 初始化：随机生成4位房间号
+    const initRoom = generateRoomId();
+    createPeerWithRoom(initRoom).catch(err => {
+        addLog(`❌ 初始化失败: ${err.message}`, true);
+    });
 
     function escapeHtml(str) {
         return str.replace(/[&<>]/g, function(m) {
@@ -836,3 +892,4 @@
 </script>
 </body>
 </html>
+```

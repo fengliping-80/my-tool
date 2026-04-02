@@ -1,11 +1,15 @@
-完全可以！我来帮你修改代码，让设备ID变成 **4位数字**，这样手机和电脑之间输入就方便多了。
+明白了！你希望**只要一方发起连接，连接成功后双方都能互相发送文件**，而不是只有发起方才能发送。
+
+这个功能其实代码已经支持了！因为 `peer.on('connection')` 和主动 `peer.connect()` 都会调用同一个 `setupConnection()` 函数，双方都会建立相同的连接对象。
+
+但是从你的截图看，按钮被禁用是因为**连接建立后，一方没有正确识别连接状态**。我来修复这个问题，确保连接成功后双方都能正常发送文件。
 ```html
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=yes">
-    <title>文件快传 | 4位数字极简连接</title>
+    <title>文件快传 | 4位数字互传</title>
     <style>
         * {
             margin: 0;
@@ -50,7 +54,6 @@
             margin-top: 8px;
         }
 
-        /* 房间号卡片 - 核心 */
         .room-card {
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             border-radius: 28px;
@@ -76,11 +79,6 @@
             padding: 15px 20px;
             border-radius: 60px;
             margin: 15px 0;
-            word-break: break-all;
-        }
-
-        .room-number span {
-            letter-spacing: 8px;
         }
 
         .btn-group {
@@ -105,11 +103,6 @@
             transform: scale(0.96);
         }
 
-        .refresh-btn {
-            background: rgba(255,255,255,0.3);
-        }
-
-        /* 连接区域 */
         .connect-card {
             background: white;
             border-radius: 28px;
@@ -146,7 +139,6 @@
             letter-spacing: 4px;
             font-weight: bold;
             outline: none;
-            transition: 0.2s;
         }
 
         .input-group input:focus {
@@ -207,7 +199,6 @@
             background: #e74c3c;
         }
 
-        /* 文件传输区域 */
         .transfer-card {
             background: white;
             border-radius: 28px;
@@ -289,9 +280,9 @@
         .send-all-btn:disabled {
             opacity: 0.5;
             cursor: not-allowed;
+            background: #95a5a6;
         }
 
-        /* 接收区域 */
         .received-area {
             max-height: 250px;
             overflow-y: auto;
@@ -325,7 +316,6 @@
             cursor: pointer;
         }
 
-        /* 日志 */
         .log-area {
             background: #1a1a2e;
             color: #aaa;
@@ -362,22 +352,16 @@
                 font-size: 2.5rem;
                 letter-spacing: 4px;
             }
-            .btn {
-                padding: 10px 18px;
-            }
         }
     </style>
 </head>
 <body>
 <div class="app">
     <div class="header-card">
-        <h1>
-            📡 文件快传
-        </h1>
-        <div class="sub">电脑 ↔ 手机 · 4位数字极简连接</div>
+        <h1>📡 文件快传</h1>
+        <div class="sub">一方连接 · 双方互传 | 4位数字极简连接</div>
     </div>
 
-    <!-- 房间号显示 -->
     <div class="room-card">
         <div class="room-label">🏠 我的房间号</div>
         <div class="room-number" id="roomNumber">----</div>
@@ -387,11 +371,8 @@
         </div>
     </div>
 
-    <!-- 连接区域 -->
     <div class="connect-card">
-        <div class="section-title">
-            🔗 输入对方房间号连接
-        </div>
+        <div class="section-title">🔗 输入对方房间号连接</div>
         <div class="input-group">
             <input type="text" id="targetRoomInput" placeholder="0000" maxlength="4" autocomplete="off" style="text-align:center; font-size:1.5rem;">
             <button class="btn btn-primary" id="connectBtn">连接</button>
@@ -403,11 +384,9 @@
         </div>
     </div>
 
-    <!-- 发送区域 -->
+    <!-- 发送区域 - 双方都有 -->
     <div class="transfer-card">
-        <div class="section-title">
-            📤 发送文件
-        </div>
+        <div class="section-title">📤 发送文件</div>
         <div class="file-dropzone" id="dropzone">
             📁 点击或拖拽文件到这里<br>
             <small style="color:#999;">支持图片、文档等任意格式</small>
@@ -417,11 +396,8 @@
         <button class="send-all-btn" id="sendBtn" disabled>🚀 发送到对方</button>
     </div>
 
-    <!-- 接收区域 -->
     <div class="transfer-card">
-        <div class="section-title">
-            📥 接收的文件
-        </div>
+        <div class="section-title">📥 接收的文件</div>
         <div class="received-area" id="receivedArea">
             <div style="color:#999; text-align:center; padding:20px;">暂无接收文件</div>
         </div>
@@ -433,9 +409,9 @@
 
     <div class="tip">
         💡 使用说明：<br>
-        1️⃣ 电脑和手机都打开本页面，会自动生成4位房间号（如 3827）<br>
-        2️⃣ 在另一台设备输入对方的4位房间号，点击"连接"<br>
-        3️⃣ 连接成功后即可互传文件/图片 🎉
+        1️⃣ 电脑和手机都打开本页面，会自动生成4位房间号<br>
+        2️⃣ 在任意一方输入对方的4位房间号，点击"连接"<br>
+        3️⃣ 连接成功后，<strong>双方都可以选择文件并互传</strong> 🎉
     </div>
 </div>
 
@@ -460,29 +436,9 @@
     // 状态变量
     let peer = null;
     let currentConn = null;
-    let myRoomId = null;      // 4位房间号
-    let actualPeerId = null;  // PeerJS真实ID（用于连接）
+    let myRoomId = null;
     let isConnected = false;
     let pendingFiles = [];
-    
-    // 房间号映射表（存储房间号对应的真实peerId）
-    // 由于PeerJS不能自定义ID，我们需要一个简单的映射机制
-    // 使用localStorage + storage事件来实现跨标签页/跨设备的房间号发现
-    // 但跨设备无法共享localStorage，所以我们需要一个更好的方案：
-    // 使用PeerJS的discovery机制？不行。
-    // 解决方案：让每个设备将自己的房间号和peerId注册到一个临时的地方
-    // 最简单：使用一个公共的免费Firebase？太重了。
-    // 替代方案：直接在输入房间号时，通过PeerJS的connect尝试连接一个构造的ID？
-    // 更好的方案：使用房间号作为peerId的一部分，但PeerJS要求全局唯一
-    // 最实用：房间号只是便于记忆，实际连接时通过信令服务器自动匹配
-    // 为了简化且完全可用，我使用一个简单的信令：每个设备将自己的房间号和peerId注册到localStorage
-    // 但对于跨设备，可以用一个简单的广播？不可靠。
-    // 为了确保100%可用，我改为使用房间号+信令匹配：通过一个简单的WebSocket公共信令？不推荐。
-    // 最终方案：使用房间号作为自定义peerId的种子，PeerJS支持自定义ID！
-    // PeerJS的new Peer(id)可以指定ID，只要ID全局唯一就行
-    // 让用户输入4位数字作为房间号，然后以"room_" + 房间号作为peerId
-    // 这样双方都用同一个房间号创建peer，就可以直接连接！
-    // 但是需要确保房间号没有被占用，如果被占用就提示更换
     
     // 接收文件缓冲
     let receivingMeta = null;
@@ -493,7 +449,6 @@
         return Math.floor(1000 + Math.random() * 9000).toString();
     }
 
-    // 添加日志
     function addLog(msg, isError = false) {
         const logDiv = document.createElement('div');
         logDiv.className = 'log-entry';
@@ -506,25 +461,34 @@
         }
     }
 
-    // 更新连接状态
+    // 更新连接状态 - 关键修复：确保连接成功后启用发送按钮
     function updateConnectionStatus(connected, msg) {
         if(connected) {
             statusLed.className = 'led green';
             statusTextSpan.innerText = msg || '已连接';
             isConnected = true;
+            addLog(`✅ ${msg || '连接已建立'}`);
         } else {
             statusLed.className = 'led red';
             statusTextSpan.innerText = msg || '未连接';
             isConnected = false;
         }
-        sendBtn.disabled = !isConnected || pendingFiles.length === 0;
+        // 关键：更新发送按钮状态（连接成功且有文件时才启用）
+        updateSendButton();
+    }
+
+    // 更新发送按钮状态
+    function updateSendButton() {
+        const hasFiles = pendingFiles.length > 0;
+        const canSend = isConnected && hasFiles;
+        sendBtn.disabled = !canSend;
     }
 
     // 渲染待发送文件列表
     function renderPendingFiles() {
         if(pendingFiles.length === 0) {
-            selectedFilesList.innerHTML = '<div style="color:#999; text-align:center; padding:12px;">暂无待发送文件</div>';
-            sendBtn.disabled = true;
+            selectedFilesList.innerHTML = '<div style="color:#999; text-align:center; padding:12px;">暂无待发送文件<br>👆 点击上方区域选择文件</div>';
+            updateSendButton();
             return;
         }
         
@@ -551,13 +515,12 @@
                 if(!isNaN(idx)) {
                     pendingFiles.splice(idx, 1);
                     renderPendingFiles();
-                    sendBtn.disabled = !isConnected || pendingFiles.length === 0;
                 }
                 e.stopPropagation();
             });
         });
         
-        sendBtn.disabled = !isConnected || pendingFiles.length === 0;
+        updateSendButton();
     }
 
     // 添加接收到的文件
@@ -608,7 +571,7 @@
         }
         
         receivedArea.prepend(receivedDiv);
-        addLog(`✅ 接收文件: ${file.name} (${sizeStr})`);
+        addLog(`✅ 收到文件: ${file.name} (${sizeStr})`);
     }
 
     // 发送文件
@@ -617,11 +580,17 @@
             addLog('❌ 未连接，无法发送', true);
             return;
         }
-        if(pendingFiles.length === 0) return;
+        if(pendingFiles.length === 0) {
+            addLog('⚠️ 请先选择文件', true);
+            return;
+        }
         
         addLog(`📤 开始发送 ${pendingFiles.length} 个文件...`);
         
-        pendingFiles.forEach((file, index) => {
+        // 复制一份待发送列表，避免发送过程中被修改
+        const filesToSend = [...pendingFiles];
+        
+        filesToSend.forEach((file, index) => {
             const reader = new FileReader();
             reader.onload = (ev) => {
                 const arrayBuffer = ev.target.result;
@@ -631,21 +600,27 @@
                     mime: file.type,
                     size: file.size
                 };
-                currentConn.send(JSON.stringify(metadata));
-                setTimeout(() => {
-                    if(currentConn && currentConn.open) {
-                        currentConn.send(arrayBuffer);
-                        addLog(`✓ 已发送: ${file.name}`);
-                    }
-                }, 100);
+                try {
+                    currentConn.send(JSON.stringify(metadata));
+                    setTimeout(() => {
+                        if(currentConn && currentConn.open) {
+                            currentConn.send(arrayBuffer);
+                            addLog(`✓ 已发送: ${file.name}`);
+                        } else {
+                            addLog(`❌ 发送失败: ${file.name}，连接已断开`, true);
+                        }
+                    }, 100);
+                } catch(e) {
+                    addLog(`❌ 发送出错: ${e.message}`, true);
+                }
             };
             reader.onerror = () => addLog(`❌ 读取文件失败: ${file.name}`, true);
             reader.readAsArrayBuffer(file);
         });
         
+        // 清空待发送列表
         pendingFiles = [];
         renderPendingFiles();
-        sendBtn.disabled = true;
     }
 
     // 处理接收到的数据
@@ -663,7 +638,7 @@
                     addLog(`📥 准备接收: ${receivingMeta.name}`);
                 }
             } catch(e) {
-                addLog(`收到文本: ${data}`);
+                // 不是JSON，忽略
             }
         } else if(data instanceof ArrayBuffer) {
             if(receivingMeta) {
@@ -696,30 +671,37 @@
         }
     }
 
-    // 设置数据连接
-    function setupConnection(conn) {
-        if(currentConn && currentConn.open) {
+    // 设置数据连接 - 双方都会调用这个函数
+    function setupConnection(conn, isInitiator = false) {
+        // 关闭旧连接
+        if(currentConn && currentConn !== conn && currentConn.open) {
             currentConn.close();
         }
         
         currentConn = conn;
         
         conn.on('open', () => {
-            addLog(`🔗 连接成功！对方房间号: ${targetRoomInput.value}`);
-            updateConnectionStatus(true, `已连接到房间 ${targetRoomInput.value}`);
+            const connectedTo = conn.peer;
+            addLog(`🔗 连接成功！对方ID: ${connectedTo.substring(0, 12)}...`);
+            updateConnectionStatus(true, `已连接`);
         });
         
         conn.on('data', handleData);
         
         conn.on('close', () => {
             addLog(`🔌 连接已断开`);
-            updateConnectionStatus(false, '连接已断开');
-            currentConn = null;
+            if(currentConn === conn) {
+                updateConnectionStatus(false, '连接已断开');
+                currentConn = null;
+            }
         });
         
         conn.on('error', (err) => {
             addLog(`❌ 连接错误: ${err.message}`, true);
-            updateConnectionStatus(false, '连接错误');
+            if(currentConn === conn) {
+                updateConnectionStatus(false, '连接错误');
+                currentConn = null;
+            }
         });
     }
 
@@ -735,16 +717,15 @@
             
             newPeer.on('open', () => {
                 peer = newPeer;
-                actualPeerId = peerId;
                 myRoomId = roomId;
                 roomNumberSpan.innerText = roomId;
                 addLog(`✅ 房间号 ${roomId} 创建成功！`);
                 updateConnectionStatus(false, '等待对方连接');
                 
-                // 监听连接
+                // 监听别人发起的连接
                 peer.on('connection', (conn) => {
-                    addLog(`📞 收到来自房间 ${conn.peer} 的连接`);
-                    setupConnection(conn);
+                    addLog(`📞 收到来自 ${conn.peer} 的连接请求`);
+                    setupConnection(conn, false);
                 });
                 
                 resolve();
@@ -779,8 +760,22 @@
         
         const targetPeerId = `room_${roomId}`;
         addLog(`🔄 正在连接到房间 ${roomId}...`);
+        
+        // 如果已有连接，先断开
+        if(currentConn) {
+            currentConn.close();
+            currentConn = null;
+        }
+        
         const conn = peer.connect(targetPeerId);
-        setupConnection(conn);
+        setupConnection(conn, true);
+        
+        // 设置超时提示
+        setTimeout(() => {
+            if(currentConn === conn && (!conn.open || conn.peerConnection?.iceConnectionState !== 'connected')) {
+                addLog(`⚠️ 连接房间 ${roomId} 超时，请确保对方也在线`, true);
+            }
+        }, 10000);
     }
 
     // 更换房间号
@@ -807,7 +802,7 @@
                 btn.innerText = originalText;
             }, 1500);
         }).catch(() => {
-            addLog('❌ 复制失败', true);
+            addLog('❌ 复制失败，请手动复制', true);
         });
     }
 
@@ -821,13 +816,17 @@
             pendingFiles.push(file);
         }
         renderPendingFiles();
-        sendBtn.disabled = !isConnected || pendingFiles.length === 0;
+        addLog(`📎 已添加 ${fileList.length} 个文件，共 ${pendingFiles.length} 个待发送`);
     }
 
     // 事件绑定
     connectBtn.addEventListener('click', () => {
         const targetRoom = targetRoomInput.value.trim();
-        connectToRoom(targetRoom);
+        if(targetRoom) {
+            connectToRoom(targetRoom);
+        } else {
+            addLog('❌ 请输入对方房间号', true);
+        }
     });
     
     disconnectBtn.addEventListener('click', () => {
@@ -842,7 +841,6 @@
     copyRoomBtn.addEventListener('click', copyRoom);
     refreshRoomBtn.addEventListener('click', refreshRoom);
     
-    // 限制输入为4位数字
     targetRoomInput.addEventListener('input', (e) => {
         e.target.value = e.target.value.replace(/[^\d]/g, '').slice(0, 4);
     });
@@ -873,9 +871,17 @@
         }
     });
     
-    sendBtn.addEventListener('click', sendFiles);
+    sendBtn.addEventListener('click', () => {
+        if(!isConnected) {
+            addLog('❌ 未连接，无法发送', true);
+        } else if(pendingFiles.length === 0) {
+            addLog('⚠️ 请先选择文件', true);
+        } else {
+            sendFiles();
+        }
+    });
     
-    // 初始化：随机生成4位房间号
+    // 初始化
     const initRoom = generateRoomId();
     createPeerWithRoom(initRoom).catch(err => {
         addLog(`❌ 初始化失败: ${err.message}`, true);

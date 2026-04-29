@@ -1,0 +1,1095 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+  <title>智能协议解析器 · 空参数强力生成二维码</title>
+  <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
+<script>
+// 确保 QRCode 库加载成功
+if (typeof QRCode === 'undefined') {
+  console.warn('QRCode not loaded, trying fallback...');
+  // 备用 CDN
+  document.write('<script src="https://cdn.bootcdn.net/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"><\/script>');
+}
+</script>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      background: #f4f7fc;
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      padding: 32px 28px;
+      color: #0a2540;
+    }
+
+    .generator-layout {
+      max-width: 1500px;
+      margin: 0 auto;
+      display: flex;
+      flex-wrap: nowrap;
+      gap: 28px;
+      align-items: stretch;
+    }
+
+    .left-area {
+      width: 50%;
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
+    }
+
+    .right-area {
+      width: 50%;
+      height: 50vh;
+      min-height: 400px;
+      background: #ffffff;
+      border-radius: 32px;
+      box-shadow: 0 20px 35px -12px rgba(0, 0, 0, 0.08);
+      padding: 28px 20px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-start;
+      border: 1px solid rgba(37, 201, 255, 0.2);
+      position: sticky;
+      top: 32px;
+    }
+
+    .card-panel {
+      background: #ffffff;
+      border-radius: 28px;
+      box-shadow: 0 8px 20px rgba(0, 0, 0, 0.02), 0 2px 6px rgba(0, 0, 0, 0.05);
+      padding: 26px 28px;
+      border: 1px solid #eef2f8;
+    }
+
+    .section-title {
+      font-size: 18px;
+      font-weight: 650;
+      letter-spacing: -0.3px;
+      margin-bottom: 20px;
+      color: #0f2b3d;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      border-left: 5px solid #25C9FF;
+      padding-left: 16px;
+    }
+
+    .protocol-input-area {
+      margin-bottom: 8px;
+    }
+
+    .flex-row-between {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+
+    .protocol-input-label {
+      font-size: 13px;
+      font-weight: 600;
+      color: #1e6f9f;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .param-input {
+      flex: 1;
+      min-width: 180px;
+    }
+
+    input, select {
+      width: 100%;
+      height: 46px;
+      border: 1px solid #dfeaf2;
+      border-radius: 20px;
+      padding: 0 18px;
+      font-size: 14px;
+      background: #ffffff;
+      transition: all 0.2s;
+      font-family: inherit;
+      color: #0e2a3b;
+    }
+
+    input:focus, select:focus {
+      outline: none;
+      border-color: #25C9FF;
+      box-shadow: 0 0 0 3px rgba(37, 201, 255, 0.15);
+    }
+
+    .parse-btn {
+      background: #eef2ff;
+      color: #2563eb;
+      border: 1px solid #cbdffc;
+      padding: 0 22px;
+      height: 42px;
+      font-size: 13px;
+      font-weight: 500;
+      border-radius: 40px;
+      cursor: pointer;
+      transition: 0.2s;
+    }
+
+    .parse-btn:hover {
+      background: #e0e7ff;
+      transform: translateY(-1px);
+    }
+
+    .param-grid {
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+    }
+
+    .param-row {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      flex-wrap: wrap;
+    }
+
+    .param-label {
+      flex: 0 0 130px;
+      font-size: 14px;
+      font-weight: 500;
+      color: #1e4460;
+    }
+
+    .param-label .type-badge {
+      font-size: 10px;
+      font-weight: 400;
+      background: #e9f0f9;
+      color: #1e6f9f;
+      padding: 2px 8px;
+      border-radius: 30px;
+      margin-left: 8px;
+      display: inline-block;
+    }
+
+    .badge-optional {
+      background: #f0f2f5;
+      color: #5b6e8c;
+    }
+
+    .btn-group {
+      display: flex;
+      gap: 14px;
+      margin-top: 28px;
+      flex-wrap: wrap;
+    }
+
+    button {
+      flex: 1;
+      height: 48px;
+      border: none;
+      border-radius: 40px;
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: 0.2s;
+      background: #f0f4f9;
+      color: #1f4e6e;
+    }
+
+    button:active {
+      transform: scale(0.97);
+    }
+
+    .btn-primary {
+      background: #25C9FF;
+      color: white;
+      box-shadow: 0 6px 12px rgba(37, 201, 255, 0.2);
+    }
+
+    .btn-primary:hover {
+      background: #0cb2e6;
+    }
+
+    .btn-secondary {
+      background: #ecf3f8;
+      border: 1px solid #d4e0ea;
+    }
+
+    .code-block {
+      background: #f9fbfd;
+      border-radius: 20px;
+      padding: 18px 20px;
+      font-size: 13px;
+      font-family: 'SF Mono', 'Menlo', monospace;
+      word-break: break-all;
+      white-space: pre-wrap;
+      line-height: 1.55;
+      border: 1px solid #e6edf4;
+      color: #155f7c;
+    }
+
+    .step-badge {
+      font-size: 12px;
+      font-weight: 600;
+      background: #e1f3fe;
+      color: #0c8bcb;
+      display: inline-block;
+      padding: 4px 14px;
+      border-radius: 100px;
+      margin-bottom: 14px;
+    }
+
+    .mini-note {
+      font-size: 12px;
+      color: #5c7f96;
+      margin-top: 12px;
+      background: #fef7e0;
+      padding: 8px 14px;
+      border-radius: 24px;
+    }
+
+.qr-wrapper {
+      text-align: center;
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      margin-top: 10px;
+    }
+
+    .qr-title-icon {
+      font-size: 20px;
+      font-weight: 600;
+      margin-bottom: 22px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      color: #0c4e6e;
+    }
+
+    #qrcode {
+      display: flex;
+      justify-content: center;
+      margin: 12px auto;
+      min-height: 220px;
+    }
+
+    .qr-title-icon {
+      font-size: 20px;
+      font-weight: 600;
+      margin-bottom: 22px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      color: #0c4e6e;
+    }
+
+    #qrcode {
+      display: flex;
+      justify-content: center;
+      margin: 12px auto;
+      min-height: 226px;
+    }
+
+    #qrcode img, #qrcode canvas {
+      border-radius: 24px;
+      box-shadow: 0 16px 28px -8px rgba(0, 0, 0, 0.12);
+      background: white;
+      padding: 8px;
+      width: 210px;
+      height: 210px;
+    }
+
+    .qr-footnote {
+      margin-top: 24px;
+      font-size: 12px;
+      color: #4b6f8c;
+      background: #f5fafe;
+      padding: 14px 18px;
+      border-radius: 24px;
+      word-break: break-word;
+    }
+
+    .toast-msg {
+      position: fixed;
+      bottom: 28px;
+      left: 50%;
+      transform: translateX(-50%) scale(0.9);
+      background: #1f2e3a;
+      color: white;
+      padding: 10px 26px;
+      border-radius: 60px;
+      font-size: 14px;
+      font-weight: 500;
+      opacity: 0;
+      transition: 0.2s;
+      pointer-events: none;
+      z-index: 1100;
+    }
+
+    .toast-msg.show {
+      opacity: 1;
+      transform: translateX(-50%) scale(1);
+    }
+
+    .empty-param-hint {
+      color: #8ba0bc;
+      text-align: center;
+      padding: 16px;
+      font-style: italic;
+    }
+
+    /* Tab 样式 */
+    .main-tabs {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 24px;
+    }
+    
+    /* 历史记录使用相同布局 */
+    #tab-history .history-content {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+    .main-tab {
+      padding: 12px 24px;
+      border: none;
+      background: #f0f4f9;
+      color: #5b6e8c;
+      border-radius: 24px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: 0.2s;
+    }
+    .main-tab:hover {
+      background: #e0e7ff;
+    }
+    .main-tab.active {
+      background: #25C9FF;
+      color: white;
+    }
+    .tab-panel {
+      display: none;
+      width: 100%;
+    }
+    .tab-panel.active {
+      display: block;
+    }
+    /* 历史记录样式 */
+    .history-panel {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+    .history-empty {
+      text-align: center;
+      color: #8ba0bc;
+      padding: 40px;
+      font-size: 14px;
+    }
+    .history-item {
+      background: #f8fbfd;
+      border: 1px solid #eef2f8;
+      border-radius: 16px;
+      padding: 16px;
+      cursor: pointer;
+      transition: 0.2s;
+    }
+    .history-item:hover {
+      background: #eef2f8;
+      border-color: #25C9FF;
+    }
+    .history-item-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 8px;
+    }
+    .history-item-path {
+      font-weight: 600;
+      color: #0f2b3d;
+      font-size: 15px;
+    }
+    .history-item-delete {
+      color: #e74c3c;
+      cursor: pointer;
+      font-size: 12px;
+      padding: 4px 8px;
+    }
+    .history-item-time {
+      font-size: 11px;
+      color: #8ba0bc;
+      margin-bottom: 8px;
+    }
+    .history-item-protocol {
+      font-size: 11px;
+      color: #5b6e8c;
+      font-family: monospace;
+      word-break: break-all;
+      max-height: 60px;
+      overflow: hidden;
+    }
+    .history-clear-all {
+      text-align: center;
+      color: #e74c3c;
+      cursor: pointer;
+      padding: 12px;
+      font-size: 13px;
+    }
+    .history-clear-all:hover {
+      color: #c0392b;
+    }
+
+    @media (max-width: 880px) {
+      body { padding: 20px 16px; }
+      .generator-layout { flex-wrap: wrap; }
+      .left-area, .right-area { width: 100%; }
+      .param-row { flex-direction: column; align-items: stretch; gap: 6px; }
+      .param-label { flex: auto; }
+      .param-input { width: 100%; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="generator-layout">
+  <div class="left-area">
+    <!-- Tab 导航 -->
+    <div class="main-tabs">
+      <button class="main-tab active" onclick="switchMainTab('parse')">📝 协议解析</button>
+      <button class="main-tab" onclick="switchMainTab('history')">📋 历史记录</button>
+    </div>
+    
+    <!-- Tab 1: 协议解析 -->
+    <div id="tab-parse" class="tab-panel active">
+    <!-- 智能解析卡片 -->
+    <div class="card-panel">
+      <div class="section-title">
+        🔍 智能协议解析 · 空参数也能生成二维码
+      </div>
+      <div class="protocol-input-area">
+        <div class="flex-row-between">
+          <div class="protocol-input-label">
+            📎 完整协议链接 (autohome:// 或 rn://)
+          </div>
+          <button type="button" class="parse-btn" id="parseProtocolBtn">⚡ 解析并填充参数</button>
+          <button type="button" class="parse-btn" style="background:#e8fff0; color:#27ae60; border-color:#a8e6cf;" onclick="loadTestProtocol()">🧪 测试空参数</button>
+        </div>
+        <div class="param-input">
+          <input type="text" id="fullProtocolInput" style="font-family: monospace; font-size: 13px;" 
+                 placeholder="粘贴协议链接，如：autohome://rninsidebrowser?url=rn://..." 
+                 value="">
+        </div>
+        <div class="mini-note" style="margin-top: 14px; background:#eaf5ff;">
+          💡 支持任意 path 与任意参数，参数可留空(清空输入框)。<strong class="success">空参数同样生成有效二维码</strong>，协议保留空值字段。
+        </div>
+      </div>
+    </div>
+
+    <!-- 动态参数表单 (完全自适应，支持空值) -->
+    <div class="card-panel" id="paramsCard">
+      <div class="section-title">
+        ⚙️ 动态参数 (可编辑，留空则参数值为空)
+      </div>
+      <div id="dynamicParamsContainer" class="param-grid">
+        <div class="empty-param-hint">✨ 解析协议后自动生成参数列表，清空输入框即为空值</div>
+      </div>
+      <div class="btn-group">
+        <button class="btn-primary" id="generateFromParamsBtn">🔄 基于当前参数生成协议</button>
+        <button class="btn-secondary" id="copyFinalUrlBtn">📋 复制最终协议</button>
+      </div>
+    </div>
+
+    <!-- 内层协议预览 (第一步) -->
+    <div class="card-panel">
+      <div class="section-title">
+        🔗 内层协议 (rn:// 原始)
+      </div>
+      <div class="step-badge">decode 后预览</div>
+      <div class="code-block" id="innerPreviewBlock">
+        等待解析或生成...
+      </div>
+      <div class="mini-note">
+        📌 空参数会以 <code>key=</code> 形式保留，确保协议语义完整。
+      </div>
+    </div>
+
+    <!-- 最终协议预览 -->
+    <div class="card-panel">
+      <div class="section-title">
+        🚀 最终协议 (autohome:// 二次编码)
+      </div>
+      <div class="step-badge">用于调起 / 二维码</div>
+      <div class="code-block" id="finalPreviewBlock" style="background:#fef8e7;">
+        未生成
+      </div>
+    </div>
+    </div> <!-- 结束 tab-parse -->
+    
+    <!-- Tab 2: 历史记录 -->
+    <div id="tab-history" class="tab-panel">
+      <div class="history-content">
+        <div class="card-panel">
+          <div class="section-title">📋 访问历史记录</div>
+          <div class="mini-note">点击记录可重新加载协议</div>
+        </div>
+        <div id="historyList"></div>
+        <div class="history-clear-all" onclick="clearAllHistory()">🗑 清空全部记录</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 右侧二维码 -->
+  <div class="right-area">
+    <div class="qr-wrapper">
+      <div class="qr-title-icon">
+        📱 实时二维码
+      </div>
+      <div id="qrcode"></div>
+      <div class="qr-footnote">
+        🔍 扫码调起最终协议 <span style="color:#25C9FF;">✓ 支持空参数</span><br>
+        <span id="qrShortHint" style="font-family: monospace; font-size: 11px; display: block; margin-top: 8px; color: #25C9FF;">autohome://...</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="toastNotify" class="toast-msg">已复制</div>
+
+<script>
+  (function() {
+    // DOM 元素
+    const fullProtocolInput = document.getElementById('fullProtocolInput');
+    const parseBtn = document.getElementById('parseProtocolBtn');
+    const dynamicContainer = document.getElementById('dynamicParamsContainer');
+    const innerPreviewBlock = document.getElementById('innerPreviewBlock');
+    const finalPreviewBlock = document.getElementById('finalPreviewBlock');
+    const generateFromParamsBtn = document.getElementById('generateFromParamsBtn');
+    const copyFinalUrlBtn = document.getElementById('copyFinalUrlBtn');
+    const qrShortSpan = document.getElementById('qrShortHint');
+    const toastMsg = document.getElementById('toastNotify');
+    
+    let qrInstance = null;
+    const qrcodeContainer = document.getElementById('qrcode');
+    let currentFinalProtocol = '';
+    let currentInnerProtocol = '';
+    let currentParamsMap = new Map();
+    let currentPath = '';
+    let currentProtocolType = 'rn'; // 'rn' 或 'direct'
+    let currentOriginalProtocol = ''; // 存储原始直接协议
+    
+    // 历史记录
+    let protocolHistory = JSON.parse(localStorage.getItem('protocolHistory') || '[]');
+    
+    // Tab 切换
+    window.switchMainTab = function(tabName) {
+      document.querySelectorAll('.main-tab').forEach(function(btn) { btn.classList.remove('active'); });
+      document.querySelectorAll('.tab-panel').forEach(function(p) { p.classList.remove('active'); });
+      document.querySelector('.main-tab[onclick="switchMainTab(\'' + tabName + '\')"]').classList.add('active');
+      document.getElementById('tab-' + tabName).classList.add('active');
+      
+      if (tabName === 'history') {
+        renderHistory();
+      }
+    };
+    
+    // 渲染历史记录
+    function renderHistory() {
+      var container = document.getElementById('historyList');
+      if (protocolHistory.length === 0) {
+        container.innerHTML = '<div class="history-empty">暂无访问记录<br><small>解析协议后会自动保存</small></div>';
+        return;
+      }
+      
+      var html = '';
+      for (var i = 0; i < protocolHistory.length; i++) {
+        var item = protocolHistory[i];
+        html += '<div class="history-item" onclick="loadHistoryItem(' + i + ')">' +
+          '<div class="history-item-header">' +
+          '<span class="history-item-path">📁 ' + escapeHtml(item.path) + '</span>' +
+          '<span class="history-item-delete" onclick="event.stopPropagation(); deleteHistoryItem(' + i + ')">删除</span>' +
+          '</div>' +
+          '<div class="history-item-time">⏰ ' + item.time + ' · ' + item.paramsCount + ' 个参数</div>' +
+          '<div class="history-item-protocol">' + escapeHtml(item.protocol.substring(0, 50)) + '...</div>' +
+          '</div>';
+      }
+      container.innerHTML = html;
+    }
+    
+    // 加载历史记录
+    window.loadHistoryItem = function(index) {
+      var item = protocolHistory[index];
+      if (item) {
+        fullProtocolInput.value = item.protocol;
+        parseAndFill();
+        switchMainTab('parse');
+      }
+    };
+    
+    // 删除单条记录
+    window.deleteHistoryItem = function(index) {
+      protocolHistory.splice(index, 1);
+      localStorage.setItem('protocolHistory', JSON.stringify(protocolHistory));
+      renderHistory();
+    };
+    
+    // 清空全部记录
+    window.clearAllHistory = function() {
+      if (confirm('确定清空全部历史记录吗？')) {
+        protocolHistory = [];
+        localStorage.setItem('protocolHistory', JSON.stringify(protocolHistory));
+        renderHistory();
+      }
+    };
+    
+    // 保存到历史记录
+    function addToHistory(protocol, path, paramsCount) {
+      // 检查是否已存在相同协议
+      var exists = false;
+      for (var i = 0; i < protocolHistory.length; i++) {
+        if (protocolHistory[i].protocol === protocol) {
+          protocolHistory.splice(i, 1);
+          exists = true;
+          break;
+        }
+      }
+      
+      protocolHistory.unshift({
+        protocol: protocol,
+        path: path,
+        paramsCount: paramsCount,
+        time: new Date().toLocaleString('zh-CN')
+      });
+      
+      // 最多保存 20 条
+      if (protocolHistory.length > 20) {
+        protocolHistory = protocolHistory.slice(0, 20);
+      }
+      
+      localStorage.setItem('protocolHistory', JSON.stringify(protocolHistory));
+    }
+    
+    // 强制生成二维码（任何协议字符串都不为空就生成）
+    function forceGenerateQRCode(protocolUrl) {
+      console.log('forceGenerateQRCode called:', protocolUrl ? '有协议' : '无协议');
+      
+      if (!protocolUrl || protocolUrl.length === 0) {
+        qrcodeContainer.innerHTML = '<div style="color:#aaa; text-align:center; padding:80px 0;">等待有效协议</div>';
+        return false;
+      }
+      
+      // 强制清空容器
+      qrcodeContainer.innerHTML = '';
+      qrcodeContainer.style.display = 'flex';
+      qrcodeContainer.style.justifyContent = 'center';
+      qrcodeContainer.style.alignItems = 'center';
+      qrcodeContainer.style.minHeight = '226px';
+      
+      // 检查 QRCode 是否可用
+      if (typeof QRCode === 'undefined') {
+        console.error('QRCode library not loaded!');
+        qrcodeContainer.innerHTML = '<div style="color:#e53e3e; text-align:center; padding:20px;">二维码库未加载<br><a href="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js" target="_blank">检查CDN链接</a></div>';
+        return false;
+      }
+      
+      try {
+        // 创建新的 QRCode 实例
+        qrInstance = new QRCode(qrcodeContainer, {
+          text: protocolUrl,
+          width: 200,
+          height: 200,
+          colorDark: '#000000',
+          colorLight: '#ffffff',
+          correctLevel: QRCode.CorrectLevel.M,
+          logo: null,
+          logoWidth: 0,
+          logoBackgroundColor: '#ffffff',
+          logoBackgroundTransparent: false
+        });
+        
+        // 确保 canvas 被创建
+        setTimeout(function() {
+          const canvas = qrcodeContainer.querySelector('canvas');
+          const img = qrcodeContainer.querySelector('img');
+          console.log('QR canvas:', !!canvas, 'img:', !!img);
+          
+          if (!canvas && !img) {
+            // 手动创建 canvas
+            const c = document.createElement('canvas');
+            c.width = 200;
+            c.height = 200;
+            qrcodeContainer.innerHTML = '';
+            qrcodeContainer.appendChild(c);
+          }
+        }, 100);
+        
+        console.log('QR code generated successfully');
+        return true;
+      } catch(err) {
+        console.error('QR generation error:', err);
+        qrcodeContainer.innerHTML = '<div style="color:#e53e3e; text-align:center; padding:20px;">生成异常<br><small>' + err.message + '</small><br><br><code>' + protocolUrl.substring(0, 40) + '</code></div>';
+        return false;
+      }
+    }
+    
+    function showToast(text) {
+      toastMsg.textContent = text || '✅ 已复制';
+      toastMsg.classList.add('show');
+      setTimeout(() => toastMsg.classList.remove('show'), 1800);
+    }
+    
+    // 从任意协议中提取核心信息 (正确处理空参数)
+    function extractProtocolInfo(protocolStr) {
+      if (!protocolStr || protocolStr.trim() === '') return null;
+      let rawProtocol = protocolStr.trim();
+      let decodedInnerUrl = null;
+      let protocolType = ''; // 'rn' 或 'direct'
+      
+      // 1) autohome://rninsidebrowser?url=xxxx (嵌套RN协议)
+      if (rawProtocol.startsWith('autohome://rninsidebrowser')) {
+        protocolType = 'rn';
+        try {
+          let urlObj = new URL(rawProtocol);
+          let encoded = urlObj.searchParams.get('url');
+          if (encoded) decodedInnerUrl = decodeURIComponent(encoded);
+          else {
+            const match = rawProtocol.match(/[?&]url=([^&]+)/);
+            if (match) decodedInnerUrl = decodeURIComponent(match[1]);
+          }
+        } catch(e) {
+          const match = rawProtocol.match(/[?&]url=([^&]+)/);
+          if (match) decodedInnerUrl = decodeURIComponent(match[1]);
+        }
+        if (!decodedInnerUrl) return null;
+      } 
+      // 2) 直接 rn:// 协议
+      else if (rawProtocol.startsWith('rn://')) {
+        protocolType = 'rn';
+        decodedInnerUrl = rawProtocol;
+      }
+      else if (rawProtocol.includes('rn://')) {
+        protocolType = 'rn';
+        let startIdx = rawProtocol.indexOf('rn://');
+        decodedInnerUrl = rawProtocol.substring(startIdx);
+      }
+      // 3) 直接协议 autohome://carfriend/aichatdeepseek?query=xxx (新增支持)
+      else if (rawProtocol.startsWith('autohome://')) {
+        protocolType = 'direct';
+        // 解析直接协议
+        try {
+          // 去掉 autohome:// 前缀
+          let withoutScheme = rawProtocol.substring('autohome://'.length);
+          let queryStartIdx = withoutScheme.indexOf('?');
+          let pathPart = queryStartIdx === -1 ? withoutScheme : withoutScheme.substring(0, queryStartIdx);
+          let queryString = queryStartIdx === -1 ? '' : withoutScheme.substring(queryStartIdx + 1);
+          
+          const params = new URLSearchParams(queryString);
+          let paramsMap = new Map();
+          for (let [key, val] of params.entries()) {
+            let decodedVal = val;
+            try {
+              if (val && (val.includes('%') || val.includes('+'))) {
+                decodedVal = decodeURIComponent(val);
+              }
+            } catch(e) {}
+            paramsMap.set(key, decodedVal);
+          }
+          return { path: pathPart, paramsMap: paramsMap, protocolType: 'direct', originalProtocol: rawProtocol };
+        } catch(e) {
+          return null;
+        }
+      }
+      else {
+        return null;
+      }
+      
+      // 处理 RN 协议
+      if (protocolType === 'rn') {
+        if (!decodedInnerUrl || !decodedInnerUrl.startsWith('rn://')) return null;
+        
+        let withoutScheme = decodedInnerUrl.substring(5);
+        let queryStartIdx = withoutScheme.indexOf('?');
+        if (queryStartIdx === -1) {
+          let pathPart = withoutScheme;
+          return { path: pathPart, paramsMap: new Map(), protocolType: 'rn' };
+        }
+        let pathPart = withoutScheme.substring(0, queryStartIdx);
+        let queryString = withoutScheme.substring(queryStartIdx + 1);
+        
+        const params = new URLSearchParams(queryString);
+        let paramsMap = new Map();
+        for (let [key, val] of params.entries()) {
+          let decodedVal = val;
+          try {
+            if (val && (val.includes('%') || val.includes('+'))) {
+              decodedVal = decodeURIComponent(val);
+            }
+          } catch(e) {}
+          paramsMap.set(key, decodedVal);
+        }
+        return { path: pathPart, paramsMap: paramsMap, protocolType: 'rn' };
+      }
+      
+      return null;
+    }
+    
+    // 根据当前 path 和 paramsMap 重新构建内层协议 (空值以 key= 形式保留)
+    function rebuildInnerProtocol(path, paramsMap) {
+      if (!path) return '';
+      
+      // 手动构建参数字符串，保留空值参数 (key=)
+      const params = [];
+      for (let [key, value] of paramsMap.entries()) {
+        // 空字符串也要保留为 key= 形式
+        // encodeURIComponent('') 返回空字符串，这是正确的
+        let encodedValue = encodeURIComponent(String(value));
+        params.push(key + '=' + encodedValue);
+      }
+      
+      const queryStr = params.join('&');
+      if (queryStr.length > 0) {
+        return `rn://${path}?${queryStr}`;
+      } else {
+        return `rn://${path}`;
+      }
+    }
+    
+    // 调试用：打印参数信息
+    function debugParams() {
+      console.log('currentParamsMap:', currentParamsMap);
+      console.log('currentPath:', currentPath);
+      console.log('currentProtocolType:', currentProtocolType);
+      const inner = rebuildInnerProtocol(currentPath, currentParamsMap);
+      console.log('rebuildInnerProtocol result:', inner);
+    }
+    
+    // 根据内层协议生成最终协议 (始终可生成二维码)
+    // 支持两种格式: 1) 嵌套RN协议 2) 直接协议
+    function buildFinalFromInner(innerProto, protocolType, originalProtocol) {
+      // 直接协议类型直接返回原协议
+      if (protocolType === 'direct' && originalProtocol) {
+        return originalProtocol;
+      }
+      if (!innerProto) return '';
+      const encodedInner = encodeURIComponent(innerProto);
+      return `autohome://rninsidebrowser?url=${encodedInner}`;
+    }
+    
+    // 刷新整个UI (协议预览 + 二维码)，确保任何空参数都能生成二维码
+    function refreshFromCurrentMap(path, paramsMap) {
+      if (!path) {
+        innerPreviewBlock.textContent = '❌ 缺少路径，请先解析协议';
+        finalPreviewBlock.textContent = '无法生成协议 (无path)';
+        currentFinalProtocol = '';
+        if (qrShortSpan) qrShortSpan.textContent = '';
+        if (qrInstance) {
+          try { qrInstance.clear(); } catch(e) {}
+          qrcodeContainer.innerHTML = '<div style="color:#aaa;">等待路径</div>';
+        }
+        return;
+      }
+      
+      // 如果是直接协议类型，生成直接协议格式
+      let newInner, newFinal;
+      if (currentProtocolType === 'direct') {
+        // 直接协议：重新构建参数
+        const params = [];
+        for (let [key, value] of paramsMap.entries()) {
+          let encodedValue = encodeURIComponent(String(value));
+          params.push(key + '=' + encodedValue);
+        }
+        newInner = path + (params.length > 0 ? '?' + params.join('&') : '');
+        newFinal = 'autohome://' + newInner;
+      } else {
+        // RN 嵌套协议：使用 rebuildInnerProtocol 确保空参数被正确处理
+        newInner = rebuildInnerProtocol(path, paramsMap);
+        // 确保即使参数为空也能生成二维码
+        if (newInner && path) {
+          newFinal = buildFinalFromInner(newInner, currentProtocolType, currentOriginalProtocol);
+        } else {
+          newFinal = '';
+        }
+      }
+      
+      currentInnerProtocol = newInner;
+      currentFinalProtocol = newFinal;
+      
+      innerPreviewBlock.textContent = newInner || '(空协议)';
+      finalPreviewBlock.textContent = newFinal || '(无法生成)';
+      
+      if (qrShortSpan) {
+        let short = newFinal.length > 70 ? newFinal.substring(0, 65) + '…' : newFinal;
+        qrShortSpan.textContent = short;
+      }
+      
+      // 核心修复: 只要 final 协议非空，就强制重新生成二维码（确保空参数也能生码）
+      if (newFinal && newFinal.length > 0) {
+        forceGenerateQRCode(newFinal);
+      } else {
+        if (qrInstance) {
+          try { qrInstance.clear(); } catch(e) {}
+          qrcodeContainer.innerHTML = '<div style="color:#aaa;">无效协议</div>';
+        }
+      }
+    }
+    
+    // 渲染动态参数表单 (允许用户删除值成为空字符串)
+    function renderDynamicParams(path, paramsMap) {
+      if (!paramsMap || paramsMap.size === 0) {
+        dynamicContainer.innerHTML = '<div class="empty-param-hint">📭 无参数，可点击「基于当前参数生成协议」直接创建二维码</div>';
+        return;
+      }
+      
+      let html = '';
+      let sortedKeys = Array.from(paramsMap.keys()).sort();
+      for (let key of sortedKeys) {
+        let value = paramsMap.get(key) !== undefined ? paramsMap.get(key) : '';
+        html += `
+          <div class="param-row" data-param-key="${key}">
+            <label class="param-label">${escapeHtml(key)} <span class="type-badge badge-optional">可留空</span></label>
+            <div class="param-input">
+              <input type="text" class="dynamic-param-input" data-key="${key}" value="${escapeHtml(value)}" placeholder="留空自动变空字符串">
+            </div>
+          </div>
+        `;
+      }
+      dynamicContainer.innerHTML = html;
+      
+      // 绑定输入事件，支持清空后参数值为空字符串
+      document.querySelectorAll('.dynamic-param-input').forEach(input => {
+        const key = input.getAttribute('data-key');
+        const updateAndRefresh = () => {
+          let val = input.value;
+          currentParamsMap.set(key, val);
+          if (currentPath) {
+            refreshFromCurrentMap(currentPath, currentParamsMap);
+          }
+        };
+        input.addEventListener('input', updateAndRefresh);
+        input.addEventListener('change', updateAndRefresh);
+      });
+    }
+    
+    function escapeHtml(str) {
+      if (str === undefined || str === null) return '';
+      return String(str).replace(/[&<>]/g, function(m) {
+        if (m === '&') return '&amp;';
+        if (m === '<') return '&lt;';
+        if (m === '>') return '&gt;';
+        return m;
+      });
+    }
+    
+    // 核心解析填充 (支持空参数)
+    function parseAndFill() {
+      const rawProtocol = fullProtocolInput.value.trim();
+      if (!rawProtocol) {
+        alert('请粘贴协议链接');
+        return false;
+      }
+      
+      const info = extractProtocolInfo(rawProtocol);
+      if (!info || !info.path) {
+        alert('无法解析协议，请确保格式正确: autohome://rninsidebrowser?url=... 或 autohome://carfriend/aichatdeepseek?query=...');
+        return false;
+      }
+      
+      // 保存协议类型
+      currentProtocolType = info.protocolType || 'rn';
+      currentOriginalProtocol = info.originalProtocol || '';
+      currentPath = info.path;
+      currentParamsMap.clear();
+      for (let [k, v] of info.paramsMap.entries()) {
+        currentParamsMap.set(k, v);
+      }
+      
+      renderDynamicParams(currentPath, currentParamsMap);
+      refreshFromCurrentMap(currentPath, currentParamsMap);
+      
+      // 保存到历史记录
+      addToHistory(fullProtocolInput.value.trim(), currentPath, currentParamsMap.size);
+      
+      let typeText = currentProtocolType === 'direct' ? '直接协议' : '嵌套RN协议';
+      showToast(`✅ 解析成功: ${currentPath}，${currentParamsMap.size} 个参数 (${typeText})`);
+      return true;
+    }
+    
+    // 测试用：直接加载用户提供的协议
+    window.loadTestProtocol = function() {
+      // 使用用户提供的 RN 嵌套协议
+      const testProtocol = 'autohome://rninsidebrowser?url=rn%3A%2F%2FTKoubei_AIComment%2Faicomment%3FseriesId%3D8087%26seriesName%3D%E6%B5%B7%E8%B1%9A06%26testId%3D102931%26testValue%3DL%26tabType%3D0%26label%3D%E4%BF%9D%E5%85%BB%E6%88%90%E6%9C%AC%E9%AB%98%E6%98%82';
+      fullProtocolInput.value = testProtocol;
+      parseAndFill();
+      console.log('协议已加载，请尝试清空 label 参数后点击生成按钮');
+    };
+    
+    // 页面加载后自动测试
+    window.addEventListener('load', function() {
+      // 注释掉自动测试，改为手动点击
+      // setTimeout(loadTestProtocol, 500);
+    });
+    
+    // 页面加载后自动测试
+    window.addEventListener('load', function() {
+      setTimeout(loadTestProtocol, 500);
+    });
+    
+    // 基于当前参数重新生成 (适用于用户手动编辑，甚至留空所有参数)
+    function regenerateFromCurrentParams() {
+      if (!currentPath) {
+        alert('暂无协议路径，请先解析一个协议或手动创建一个有效路径');
+        return false;
+      }
+      // 重新收集表单最新值
+      document.querySelectorAll('.dynamic-param-input').forEach(input => {
+        const key = input.getAttribute('data-key');
+        if (key) {
+          currentParamsMap.set(key, input.value);
+        }
+      });
+      
+      // 如果是直接协议，更新原始协议
+      if (currentProtocolType === 'direct') {
+        const params = [];
+        for (let [key, value] of currentParamsMap.entries()) {
+          let encodedValue = encodeURIComponent(String(value));
+          params.push(key + '=' + encodedValue);
+        }
+        currentOriginalProtocol = 'autohome://' + currentPath + (params.length > 0 ? '?' + params.join('&') : '');
+      }
+      
+      refreshFromCurrentMap(currentPath, currentParamsMap);
+      showToast('🔄 协议与二维码已更新 (空参数保留并生成二维码)');
+      return true;
+    }
+    
+    // 复制最终协议
+    function copyFinal() {
+      if (!currentFinalProtocol || currentFinalProtocol === '') {
+        alert('无有效协议，请先解析或生成');
+        return;
+      }
+      navigator.clipboard.writeText(currentFinalProtocol).then(() => {
+        showToast('📎 最终协议已复制');
+      }).catch(() => alert('复制失败，手动复制'));
+    }
+    
+    // 事件绑定
+    parseBtn.addEventListener('click', parseAndFill);
+    generateFromParamsBtn.addEventListener('click', regenerateFromCurrentParams);
+    copyFinalUrlBtn.addEventListener('click', copyFinal);
+    
+    // 不自动初始化，保留空状态等待用户输入
+  })();
+</script>
+</body>
+</html>

@@ -757,18 +757,29 @@ if (typeof QRCode === 'undefined') {
       // 1) autohome://rninsidebrowser?url=xxxx (嵌套RN协议)
       if (rawProtocol.startsWith('autohome://rninsidebrowser')) {
         protocolType = 'rn';
-        try {
-          let urlObj = new URL(rawProtocol);
-          let encoded = urlObj.searchParams.get('url');
-          if (encoded) decodedInnerUrl = decodeURIComponent(encoded);
-          else {
-            const match = rawProtocol.match(/[?&]url=([^&]+)/);
-            if (match) decodedInnerUrl = decodeURIComponent(match[1]);
+        
+        // 修复：使用更精确的方式提取 url 参数，处理内部包含 & 的情况
+        // 找到 url= 后面的内容，从 rn:// 开始到协议末尾
+        let urlStartIdx = rawProtocol.indexOf('url=');
+        if (urlStartIdx !== -1) {
+          let encoded = rawProtocol.substring(urlStartIdx + 4);
+          
+          // 如果后面还有 &，说明还有其他参数，需要截断
+          // 但 rn:// 后面的参数应该保留，所以我们需要特殊处理
+          // 如果包含 rn://，说明是嵌套协议，从 rn:// 开始
+          if (encoded.includes('rn://')) {
+            let rnStart = encoded.indexOf('rn://');
+            encoded = encoded.substring(rnStart);
           }
-        } catch(e) {
-          const match = rawProtocol.match(/[?&]url=([^&]+)/);
-          if (match) decodedInnerUrl = decodeURIComponent(match[1]);
+          
+          // 尝试多次解码
+          decodedInnerUrl = encoded;
+          try { decodedInnerUrl = decodeURIComponent(decodedInnerUrl); } catch(e) {}
+          if (decodedInnerUrl.includes('%')) {
+            try { decodedInnerUrl = decodeURIComponent(decodedInnerUrl); } catch(e) {}
+          }
         }
+        
         if (!decodedInnerUrl) return null;
       } 
       // 2) 直接 rn:// 协议
@@ -816,26 +827,45 @@ if (typeof QRCode === 'undefined') {
       if (protocolType === 'rn') {
         if (!decodedInnerUrl || !decodedInnerUrl.startsWith('rn://')) return null;
         
-        let withoutScheme = decodedInnerUrl.substring(5);
-        let queryStartIdx = withoutScheme.indexOf('?');
+        // 查找 rn:// 之后的第一个 ? 位置（路径和查询的分界）
+        let afterRn = decodedInnerUrl.substring(5); // 去掉 rn://
+        let queryStartIdx = afterRn.indexOf('?');
+        
         if (queryStartIdx === -1) {
-          let pathPart = withoutScheme;
+          let pathPart = afterRn;
           return { path: pathPart, paramsMap: new Map(), protocolType: 'rn' };
         }
-        let pathPart = withoutScheme.substring(0, queryStartIdx);
-        let queryString = withoutScheme.substring(queryStartIdx + 1);
         
-        const params = new URLSearchParams(queryString);
+        let pathPart = afterRn.substring(0, queryStartIdx);
+        let queryString = afterRn.substring(queryStartIdx + 1);
+        
+        // 修复：多次尝试解码，确保所有参数都被正确解析
+        let decodedQueryString = queryString;
+        try { decodedQueryString = decodeURIComponent(queryString); } catch(e) {}
+        try { decodedQueryString = decodeURIComponent(decodedQueryString); } catch(e) {}
+        
+        // 使用手动解析而非 URLSearchParams，避免编码问题
         let paramsMap = new Map();
-        for (let [key, val] of params.entries()) {
-          let decodedVal = val;
-          try {
-            if (val && (val.includes('%') || val.includes('+'))) {
-              decodedVal = decodeURIComponent(val);
-            }
-          } catch(e) {}
-          paramsMap.set(key, decodedVal);
+        let paramPairs = decodedQueryString.split('&');
+        for (let pair of paramPairs) {
+          if (!pair) continue;
+          let eqIdx = pair.indexOf('=');
+          if (eqIdx === -1) {
+            // 无值参数
+            paramsMap.set(pair, '');
+          } else {
+            let key = pair.substring(0, eqIdx);
+            let val = pair.substring(eqIdx + 1);
+            // 额外解码可能编码的值
+            try {
+              if (val.includes('%')) {
+                val = decodeURIComponent(val);
+              }
+            } catch(e) {}
+            paramsMap.set(key, val);
+          }
         }
+        
         return { path: pathPart, paramsMap: paramsMap, protocolType: 'rn' };
       }
       
